@@ -13,6 +13,9 @@ import {
   Play,
   ArrowRight,
   Zap,
+  Activity,
+  AlertTriangle,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -547,6 +550,186 @@ function StepTrackingVisual() {
 }
 
 // ============================================================================
+// EXECUTION TIMELINE VISUAL — Gantt chart mockup
+// ============================================================================
+
+function ExecutionTimelineVisual() {
+  const { ref, isInView } = useInView();
+  const [selectedStep, setSelectedStep] = useState<number | null>(null);
+  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
+
+  const timelineSteps = [
+    { id: 1, label: 'LLM: Analyze', type: 'llm', start: 0, duration: 45, tokens: '1,234', color: 'bg-blue-500' },
+    { id: 2, label: 'Tool: search_db', type: 'tool', start: 45, duration: 12, tokens: '—', color: 'bg-green-500' },
+    { id: 3, label: 'Tool: fetch_api', type: 'tool', start: 45, duration: 28, tokens: '—', color: 'bg-green-500' },
+    { id: 4, label: 'LLM: Synthesize', type: 'llm', start: 73, duration: 62, tokens: '2,891', color: 'bg-blue-500' },
+    { id: 5, label: 'Decision: Route', type: 'decision', start: 135, duration: 8, tokens: '—', color: 'bg-yellow-500' },
+    { id: 6, label: 'LLM: Generate', type: 'llm', start: 143, duration: 55, tokens: '1,567', color: 'bg-blue-500' },
+  ];
+
+  const totalDuration = 200;
+  const ticks = [0, 50, 100, 150, 200];
+
+  useEffect(() => {
+    if (isInView) {
+      const timer = setTimeout(() => setSelectedStep(4), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [isInView]);
+
+  return (
+    <div ref={ref} className="relative">
+      <div
+        className="relative rounded-lg p-[1px]"
+        style={{
+          background:
+            'linear-gradient(135deg, hsl(25 95% 53% / 0.4), transparent 50%, hsl(25 95% 53% / 0.2))',
+        }}
+      >
+        <div className="rounded-lg bg-card/90 p-4 backdrop-blur-sm">
+          {/* Header */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <span className="font-mono text-xs text-muted-foreground">Execution Timeline</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="rounded-l bg-primary/20 px-2 py-0.5 font-mono text-[10px] text-primary">
+                Gantt
+              </span>
+              <span className="rounded-r bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                Tree
+              </span>
+            </div>
+          </div>
+
+          {/* Time axis */}
+          <div className="mb-1 flex items-end pl-[100px]">
+            {ticks.map((tick) => (
+              <div
+                key={tick}
+                className="font-mono text-[9px] text-muted-foreground/50"
+                style={{ position: 'absolute', left: `calc(100px + ${(tick / totalDuration) * (100 - 25)}%)` }}
+              >
+                {tick}ms
+              </div>
+            ))}
+          </div>
+
+          {/* Timeline rows */}
+          <div className="relative mt-5 space-y-1">
+            {/* Grid lines */}
+            <div className="pointer-events-none absolute inset-0 pl-[100px]">
+              {ticks.map((tick) => (
+                <div
+                  key={tick}
+                  className="absolute top-0 bottom-0 w-px bg-border/20"
+                  style={{ left: `${(tick / totalDuration) * 100}%` }}
+                />
+              ))}
+            </div>
+
+            {timelineSteps.map((step, i) => {
+              const isSelected = selectedStep === step.id;
+              const isHovered = hoveredStep === step.id;
+
+              return (
+                <div
+                  key={step.id}
+                  className={`flex items-center gap-0 transition-all duration-500 ${
+                    isInView ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
+                  }`}
+                  style={{ transitionDelay: `${i * 100}ms` }}
+                  onMouseEnter={() => setHoveredStep(step.id)}
+                  onMouseLeave={() => setHoveredStep(null)}
+                  onClick={() => setSelectedStep(step.id)}
+                >
+                  {/* Label */}
+                  <div className={`w-[100px] flex-shrink-0 truncate pr-2 font-mono text-[10px] transition-colors ${
+                    isSelected ? 'text-primary' : isHovered ? 'text-foreground' : 'text-muted-foreground/70'
+                  }`}>
+                    {step.label}
+                  </div>
+
+                  {/* Bar area */}
+                  <div className="relative h-6 flex-1">
+                    <div
+                      className={`absolute top-0.5 h-5 rounded-sm transition-all duration-300 ${step.color} ${
+                        isSelected ? 'opacity-90 ring-1 ring-primary ring-offset-1 ring-offset-card' : isHovered ? 'opacity-70' : 'opacity-50'
+                      }`}
+                      style={{
+                        left: `${(step.start / totalDuration) * 100}%`,
+                        width: `${(step.duration / totalDuration) * 100}%`,
+                        minWidth: '8px',
+                      }}
+                    >
+                      {/* Duration label inside bar */}
+                      {step.duration > 20 && (
+                        <span className="absolute inset-0 flex items-center justify-center font-mono text-[8px] text-white/80">
+                          {step.duration}ms
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Tooltip on hover */}
+                    {isHovered && (
+                      <div
+                        className="absolute -top-8 z-10 rounded bg-card border border-border/50 px-2 py-1 font-mono text-[9px] text-foreground shadow-lg whitespace-nowrap"
+                        style={{ left: `${(step.start / totalDuration) * 100 + (step.duration / totalDuration) * 50}%`, transform: 'translateX(-50%)' }}
+                      >
+                        {step.duration}ms {step.tokens !== '—' ? `· ${step.tokens} tok` : ''}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Selected step detail */}
+          <div className={`mt-3 rounded-md border px-3 py-2 transition-all duration-300 ${
+            selectedStep
+              ? 'border-primary/30 bg-primary/5 opacity-100'
+              : 'border-transparent opacity-0'
+          }`}>
+            {selectedStep && (() => {
+              const step = timelineSteps.find(s => s.id === selectedStep);
+              if (!step) return null;
+              return (
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-primary">{step.label}</span>
+                  <div className="flex items-center gap-3 font-mono text-[9px] text-muted-foreground">
+                    <span>{step.duration}ms</span>
+                    {step.tokens !== '—' && <span>{step.tokens} tokens</span>}
+                    <span className="text-primary/60">{step.type}</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Legend */}
+          <div className="mt-3 flex items-center justify-center gap-4 font-mono text-[9px] text-muted-foreground/60">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-4 rounded-sm bg-blue-500/50" />
+              LLM Call
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-4 rounded-sm bg-green-500/50" />
+              Tool Use
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-4 rounded-sm bg-yellow-500/50" />
+              Decision
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // VISUAL DIFF — Side-by-side comparison mockup
 // ============================================================================
 
@@ -815,6 +998,181 @@ function ReviewQueueVisual() {
 }
 
 // ============================================================================
+// DATA DRIFT VISUAL — Drift detection with variable analysis
+// ============================================================================
+
+function DataDriftVisual() {
+  const { ref, isInView } = useInView();
+  const [phase, setPhase] = useState<'building' | 'comparing' | 'drift' | 'analysis'>('building');
+
+  const steps = [
+    { id: 1, label: 'Parse Input', status: 'identical' as const },
+    { id: 2, label: 'LLM: Classify', status: 'identical' as const },
+    { id: 3, label: 'Tool: fetch_data', status: 'identical' as const },
+    { id: 4, label: 'LLM: Synthesize', status: 'diverged' as const },
+    { id: 5, label: 'Final Output', status: 'diverged' as const },
+  ];
+
+  const variables = [
+    { label: 'Model', valueA: 'gpt-4o', valueB: 'gpt-4o', identical: true },
+    { label: 'System Prompt', valueA: 'v2.1', valueB: 'v2.1', identical: true },
+    { label: 'Retrieved Data', valueA: '3 docs (v1)', valueB: '3 docs (v2)', identical: false },
+    { label: 'Output', valueA: '"Revenue up 15%"', valueB: '"Revenue up 22%"', identical: false },
+  ];
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    const timers = [
+      setTimeout(() => setPhase('comparing'), 600),
+      setTimeout(() => setPhase('drift'), 1400),
+      setTimeout(() => setPhase('analysis'), 2200),
+    ];
+
+    return () => timers.forEach(clearTimeout);
+  }, [isInView]);
+
+  return (
+    <div ref={ref} className="relative">
+      <div
+        className="relative rounded-lg p-[1px]"
+        style={{
+          background:
+            'linear-gradient(135deg, hsl(25 95% 53% / 0.4), transparent 50%, hsl(25 95% 53% / 0.2))',
+        }}
+      >
+        <div className="rounded-lg bg-card/90 p-4 backdrop-blur-sm">
+          {/* Header */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              <span className="font-mono text-xs text-muted-foreground">Drift Detection</span>
+            </div>
+            {(phase === 'drift' || phase === 'analysis') && (
+              <div className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-0.5 transition-all duration-300" style={{ animation: 'glow-pulse 2s ease-in-out infinite' }}>
+                <AlertTriangle className="h-3 w-3 text-red-400" />
+                <span className="font-mono text-[10px] font-medium text-red-400">DRIFT DETECTED</span>
+              </div>
+            )}
+          </div>
+
+          {/* Two execution comparison */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            {/* Run A header */}
+            <div className={`text-center font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
+              phase !== 'building' ? 'text-blue-400/70' : 'text-muted-foreground/40'
+            }`}>
+              Run A — Feb 8
+            </div>
+            {/* Run B header */}
+            <div className={`text-center font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
+              phase !== 'building' ? 'text-primary/70' : 'text-muted-foreground/40'
+            }`}>
+              Run B — Feb 10
+            </div>
+          </div>
+
+          {/* Step comparison rows */}
+          <div className="space-y-1">
+            {steps.map((step, i) => {
+              const showComparison = phase !== 'building';
+              const showDivergence = (phase === 'drift' || phase === 'analysis') && step.status === 'diverged';
+
+              return (
+                <div
+                  key={step.id}
+                  className={`grid grid-cols-2 gap-3 transition-all duration-500 ${
+                    isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+                  }`}
+                  style={{ transitionDelay: `${i * 80}ms` }}
+                >
+                  {/* Run A step */}
+                  <div className={`flex items-center gap-2 rounded-md border px-2 py-1.5 transition-all duration-300 ${
+                    showDivergence
+                      ? 'border-blue-500/30 bg-blue-500/5'
+                      : showComparison && step.status === 'identical'
+                        ? 'border-green-500/20 bg-green-500/5'
+                        : 'border-border/30 bg-card/50'
+                  }`}>
+                    <span className={`font-mono text-[10px] ${
+                      showDivergence ? 'text-blue-400' : showComparison && step.status === 'identical' ? 'text-green-400/70' : 'text-muted-foreground/70'
+                    }`}>
+                      {step.label}
+                    </span>
+                  </div>
+
+                  {/* Run B step */}
+                  <div className={`flex items-center gap-2 rounded-md border px-2 py-1.5 transition-all duration-300 ${
+                    showDivergence
+                      ? 'border-primary/30 bg-primary/5'
+                      : showComparison && step.status === 'identical'
+                        ? 'border-green-500/20 bg-green-500/5'
+                        : 'border-border/30 bg-card/50'
+                  }`}>
+                    <span className={`font-mono text-[10px] ${
+                      showDivergence ? 'text-primary' : showComparison && step.status === 'identical' ? 'text-green-400/70' : 'text-muted-foreground/70'
+                    }`}>
+                      {step.label}
+                    </span>
+                    {/* Status badge */}
+                    {showComparison && (
+                      <span className={`ml-auto flex-shrink-0 font-mono text-[8px] ${
+                        showDivergence ? 'text-red-400' : 'text-green-400/50'
+                      }`}>
+                        {showDivergence ? 'changed' : 'match'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Variable analysis panel */}
+          <div className={`mt-3 rounded-md border p-3 transition-all duration-500 ${
+            phase === 'analysis'
+              ? 'border-border/40 bg-card/60 opacity-100 translate-y-0'
+              : 'border-transparent bg-transparent opacity-0 translate-y-3'
+          }`}>
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
+              Variable Analysis
+            </div>
+            <div className="space-y-1.5">
+              {variables.map((v, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-muted-foreground/70">{v.label}</span>
+                  <div className="flex items-center gap-2">
+                    {v.identical ? (
+                      <span className="flex items-center gap-1 font-mono text-[9px] text-green-400/60">
+                        <CheckCircle2 className="h-2.5 w-2.5" />
+                        identical
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 font-mono text-[9px] text-red-400">
+                        <AlertTriangle className="h-2.5 w-2.5" />
+                        changed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Root cause */}
+            <div className="mt-3 flex items-center gap-2 rounded bg-red-500/10 px-2.5 py-1.5">
+              <Activity className="h-3 w-3 text-red-400" />
+              <span className="font-mono text-[10px] text-red-400">
+                Root cause: Retrieved data changed between runs
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // SECTION DIVIDER
 // ============================================================================
 
@@ -938,6 +1296,21 @@ export function FeatureSections() {
       <SectionDivider />
 
       <FeatureSection
+        badge="EXECUTION TIMELINE"
+        title="See the Full Picture at a Glance"
+        description="Gantt chart and trace tree views show timing, dependencies, and bottlenecks across your entire execution. Spot slow steps instantly — find the 200ms tool call hiding behind a 2s LLM call."
+        capabilities={[
+          'Cascading Gantt bars color-coded by step type',
+          'Collapsible trace tree with parent-child hierarchy',
+          'Click any bar to inspect step details and metrics',
+          'Zoom, pan, and keyboard navigation for large executions',
+        ]}
+        visual={<ExecutionTimelineVisual />}
+      />
+
+      <SectionDivider />
+
+      <FeatureSection
         badge="VISUAL DIFF"
         title="Compare Models Side-by-Side"
         description="Run the same prompt through different models simultaneously. See outputs side-by-side with diff highlighting, metrics comparison, and cost analysis."
@@ -948,6 +1321,22 @@ export function FeatureSections() {
           'Save and export comparison reports',
         ]}
         visual={<VisualDiffVisual />}
+        reverse
+      />
+
+      <SectionDivider />
+
+      <FeatureSection
+        badge="DATA DRIFT DETECTION"
+        title="Catch Output Drift Before Users Do"
+        description="Automatically detect when agent outputs change for the same inputs. Pinpoint whether drift comes from data, model, or prompt changes — before your users notice."
+        capabilities={[
+          'Auto-detect output drift across same-name executions',
+          'Variable analysis: model, prompt, retrieved data, tools',
+          'Visual divergence timeline showing exact drift point',
+          'Export drift reports for investigation and resolution',
+        ]}
+        visual={<DataDriftVisual />}
       />
 
       <SectionDivider />

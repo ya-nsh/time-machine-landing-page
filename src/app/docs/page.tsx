@@ -155,36 +155,42 @@ export default function DocsPage() {
             <FeatureCard
               icon={MessageSquareText}
               title="Review Queue & Feedback Loop"
-              description="Human reviewers mark outputs correct or wrong. Developers get auto-generated debug packages. Replay validates that fixes actually work."
+              description="Close the loop between human review and automated debugging. Reviewers mark outputs as correct or wrong, developers get auto-generated debug packages with full execution context, and Replay & Validate confirms fixes actually work — automatically re-running executions against expected outputs."
               details={[
-                'Pending → Wrong → Resolved workflow',
-                'One-click debug package generation',
-                'Replay & Validate with automatic pass/fail',
-                'Keyboard shortcuts for rapid review (C/W)',
+                'Three-phase workflow: Pending → Wrong → Resolved',
+                'One-click debug package generation (markdown with full trace)',
+                'Batch replay & validate: re-run multiple executions at once',
+                'Auto-mark as resolved when replay output matches expected',
+                'Keyboard shortcuts for rapid review (C = correct, W = wrong)',
+                '"Open in Claude" button for AI-assisted debugging',
               ]}
             />
 
             <FeatureCard
               icon={Activity}
               title="Data Drift Detection"
-              description="Detect when agent outputs change for the same inputs. Compare executions to identify whether drift comes from data, model, or prompt changes."
+              description="Automatically detect when agent outputs change for the same inputs over time. Compare any two executions with variable analysis to pinpoint whether drift comes from data changes, model updates, prompt modifications, or tool behavior — before your users notice the inconsistency."
               details={[
-                'Automatic drift detection across executions',
-                'Variable analysis (model, prompt, data, tools)',
-                'Visual divergence timeline',
-                'Export drift reports for investigation',
+                'Auto-detect output drift across same-name executions',
+                'Variable-by-variable analysis: model, system prompt, user prompt, tools, retrieved data',
+                'Visual divergence timeline showing exact step where outputs diverge',
+                'Side-by-side step comparison with identical/modified/added/removed badges',
+                'Pinned replay: fork from divergent step with old data to verify root cause',
+                'Export drift investigation reports as JSON',
               ]}
             />
 
             <FeatureCard
               icon={Clock}
               title="Execution Timeline"
-              description="Gantt chart and trace tree views for understanding execution flow. See timing, dependencies, and bottlenecks at a glance."
+              description="Visualize your entire execution as an interactive Gantt chart with cascading bars. Spot bottlenecks instantly — find the slow tool call hiding behind a fast LLM response. Switch between timeline and trace tree views for different perspectives on the same execution."
               details={[
-                'Gantt chart with cascading bars',
-                'Collapsible trace tree with type badges',
-                'Zoom, pan, and keyboard navigation',
-                'Click-to-select synced with detail panel',
+                'Cascading Gantt bars color-coded by type (LLM, tool, decision)',
+                'Collapsible trace tree with parent-child hierarchy and type badges',
+                'Hover tooltips showing duration, token count, and cost per step',
+                'Click-to-select synced across Gantt chart, trace tree, and detail panel',
+                'Zoom, pan, and keyboard navigation (arrow keys, +/- zoom, 0 fit)',
+                'Virtualized rendering for large executions (100+ steps)',
               ]}
             />
           </div>
