@@ -5,6 +5,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Time Machine - AI Agent Observability',
   description: 'Debug and observe your AI agents with Time Machine. Capture executions, replay from any step, compare diffs visually.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

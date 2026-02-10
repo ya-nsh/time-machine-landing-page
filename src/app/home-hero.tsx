@@ -234,7 +234,7 @@ function HeroSubtitle() {
 function HeroActions() {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-      <Link href="/sign-up">
+      <Link href="/docs">
         <Button size="lg" className="group relative overflow-hidden px-8">
           <span className="relative z-10 flex items-center gap-2">
             Get Started

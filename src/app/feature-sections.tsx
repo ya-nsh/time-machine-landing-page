@@ -143,11 +143,11 @@ function ForkReplayVisual() {
   const { ref, isInView } = useInView();
 
   const originalSteps = [
-    { id: 1, type: 'llm', label: 'LLM Call', detail: 'gpt-4o', meta: '1,234 tok' },
-    { id: 2, type: 'tool', label: 'Tool: search_db', detail: 'query users', meta: '45ms' },
-    { id: 3, type: 'decision', label: 'Route Decision', detail: 'confidence: 0.72', meta: 'fork point' },
-    { id: 4, type: 'llm', label: 'LLM Call', detail: 'generate response', meta: '892 tok' },
-    { id: 5, type: 'output', label: 'Final Output', detail: 'sent to user', meta: '$0.03' },
+    { id: 1, type: 'llm', label: 'LLM Call', detail: 'gpt-4o', meta: '1,234 tok', cost: 0.02 },
+    { id: 2, type: 'tool', label: 'Tool: search_db', detail: 'query users', meta: '45ms', cost: 0.00 },
+    { id: 3, type: 'decision', label: 'Route Decision', detail: 'confidence: 0.72', meta: 'fork point', cost: 0.01 },
+    { id: 4, type: 'llm', label: 'LLM Call', detail: 'generate response', meta: '892 tok', cost: 0.015 },
+    { id: 5, type: 'output', label: 'Final Output', detail: 'sent to user', meta: '$0.03', cost: 0.005 },
   ];
 
   const forkedSteps = [
@@ -159,27 +159,22 @@ function ForkReplayVisual() {
   useEffect(() => {
     if (!isInView) return;
 
-    // Phase 1: Build up original steps one by one
     const stepTimers: ReturnType<typeof setTimeout>[] = [];
     for (let i = 0; i <= originalSteps.length; i++) {
       stepTimers.push(setTimeout(() => setVisibleSteps(i), i * 200));
     }
 
-    // Phase 2: Fork animation
     stepTimers.push(setTimeout(() => setPhase('forking'), originalSteps.length * 200 + 400));
 
-    // Phase 3: Replay with progress bar
     stepTimers.push(setTimeout(() => {
       setPhase('replaying');
       setReplayProgress(0);
     }, originalSteps.length * 200 + 1000));
 
-    // Animate replay progress
     for (let i = 1; i <= 3; i++) {
       stepTimers.push(setTimeout(() => setReplayProgress(i), originalSteps.length * 200 + 1000 + i * 500));
     }
 
-    // Phase 4: Done
     stepTimers.push(setTimeout(() => setPhase('done'), originalSteps.length * 200 + 3000));
 
     return () => stepTimers.forEach(clearTimeout);
@@ -206,7 +201,7 @@ function ForkReplayVisual() {
             <div className="flex items-center gap-2">
               {forkActive && (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary transition-all duration-300">
-                  forked
+                  forked at step 3
                 </span>
               )}
               <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
@@ -224,7 +219,8 @@ function ForkReplayVisual() {
               </div>
               {originalSteps.map((step, i) => {
                 const isVisible = i < visibleSteps;
-                const isDimmed = forkActive && i >= 2;
+                const isReused = forkActive && i < 2;
+                const isDimmed = forkActive && i > 2;
                 const isForkPoint = forkActive && i === 2;
 
                 return (
@@ -235,52 +231,62 @@ function ForkReplayVisual() {
                     } ${
                       isForkPoint
                         ? 'border-primary/50 bg-primary/5'
-                        : isDimmed
-                          ? 'border-border/20 bg-card/30 opacity-40'
-                          : 'border-border/40 bg-card/50'
+                        : isReused
+                          ? 'border-green-500/30 bg-green-500/5'
+                          : isDimmed
+                            ? 'border-border/20 bg-card/30 opacity-40'
+                            : 'border-border/40 bg-card/50'
                     }`}
                     style={{ transitionDelay: `${i * 80}ms` }}
                   >
-                    {/* Connector line to next step */}
                     {i < originalSteps.length - 1 && (
                       <div
                         className={`absolute -bottom-1.5 left-[17px] h-1.5 w-px ${
-                          isDimmed ? 'bg-border/20' : 'bg-border/40'
+                          isDimmed ? 'bg-border/20' : isReused ? 'bg-green-500/30' : 'bg-border/40'
                         }`}
                       />
                     )}
 
                     <div
                       className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${
-                        isForkPoint
-                          ? 'bg-primary/20 text-primary'
-                          : isDimmed
-                            ? 'bg-muted/30 text-muted-foreground/40'
-                            : 'bg-muted text-muted-foreground'
+                        isReused
+                          ? 'bg-green-500/20 text-green-400'
+                          : isForkPoint
+                            ? 'bg-primary/20 text-primary'
+                            : isDimmed
+                              ? 'bg-muted/30 text-muted-foreground/40'
+                              : 'bg-muted text-muted-foreground'
                       }`}
                     >
-                      <StepIcon type={step.type} />
+                      {isReused ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <StepIcon type={step.type} />
+                      )}
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <span
                           className={`truncate font-mono text-[11px] ${
-                            isForkPoint ? 'text-primary' : isDimmed ? 'text-muted-foreground/40' : 'text-foreground'
+                            isReused ? 'text-green-400' : isForkPoint ? 'text-primary' : isDimmed ? 'text-muted-foreground/40' : 'text-foreground'
                           }`}
                         >
                           {step.label}
                         </span>
-                        <span className={`flex-shrink-0 font-mono text-[9px] ${isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'}`}>
-                          {step.meta}
+                        <span className={`flex-shrink-0 font-mono text-[9px] ${
+                          isReused ? 'text-green-400/60' : isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'
+                        }`}>
+                          {isReused ? 'reused' : step.meta}
                         </span>
                       </div>
-                      <span className={`font-mono text-[9px] ${isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'}`}>
-                        {step.detail}
+                      <span className={`font-mono text-[9px] ${
+                        isReused ? 'text-green-400/50' : isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'
+                      }`}>
+                        {isReused ? 'not re-executed' : step.detail}
                       </span>
                     </div>
 
-                    {/* Fork indicator on the fork point step */}
                     {isForkPoint && (
                       <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 translate-x-full">
                         <div className="flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-medium text-primary-foreground shadow-lg shadow-primary/20">
@@ -299,9 +305,10 @@ function ForkReplayVisual() {
                 Forked
               </div>
 
-              {/* Empty spacers for steps 1-2 (shared with original) */}
-              <div className={`flex items-center gap-2.5 rounded-md border border-dashed px-2.5 py-2 transition-all duration-400 ${forkActive ? 'border-border/20 opacity-100' : 'border-transparent opacity-0'}`}>
-                <span className="font-mono text-[10px] text-muted-foreground/30">steps 1-2 shared</span>
+              {/* Reused steps indicator */}
+              <div className={`flex items-center gap-2.5 rounded-md border border-dashed px-2.5 py-2 transition-all duration-400 ${forkActive ? 'border-green-500/20 bg-green-500/5 opacity-100' : 'border-transparent opacity-0'}`}>
+                <CheckCircle2 className={`h-3.5 w-3.5 transition-colors ${forkActive ? 'text-green-400/60' : 'text-transparent'}`} />
+                <span className="font-mono text-[10px] text-green-400/50">steps 1-2 reused instantly</span>
               </div>
 
               {/* Forked steps */}
@@ -318,7 +325,6 @@ function ForkReplayVisual() {
                     }`}
                     style={{ transitionDelay: `${i * 100}ms` }}
                   >
-                    {/* Connector line */}
                     {i < forkedSteps.length - 1 && isVisible && (
                       <div className="absolute -bottom-1.5 left-[17px] h-1.5 w-px bg-primary/30" />
                     )}
@@ -341,7 +347,6 @@ function ForkReplayVisual() {
                       </span>
                     </div>
 
-                    {/* Replay pulse on the currently replaying step */}
                     {phase === 'replaying' && replayProgress === i + 1 && (
                       <div className="absolute inset-0 rounded-md border border-primary/50" style={{ animation: 'glow-pulse 1s ease-in-out infinite' }} />
                     )}
@@ -355,7 +360,7 @@ function ForkReplayVisual() {
           <div className={`mt-4 transition-all duration-500 ${phase === 'replaying' || phase === 'done' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-mono text-[10px] text-muted-foreground">
-                {phase === 'done' ? 'Replay complete' : 'Replaying from step 3...'}
+                {phase === 'done' ? 'Replay complete — only 3 of 5 steps re-executed' : 'Replaying from step 3 (skipping steps 1-2)...'}
               </span>
               <span className="font-mono text-[10px] text-primary">
                 {Math.min(replayProgress, 3)}/3 steps
@@ -367,6 +372,20 @@ function ForkReplayVisual() {
                 style={{ width: `${(Math.min(replayProgress, 3) / 3) * 100}%` }}
               />
             </div>
+          </div>
+
+          {/* Cost savings callout */}
+          <div className={`mt-3 flex items-center justify-between rounded-md border px-3 py-2 transition-all duration-500 ${
+            phase === 'done'
+              ? 'border-green-500/20 bg-green-500/5 opacity-100 translate-y-0'
+              : 'border-transparent bg-transparent opacity-0 translate-y-2'
+          }`}>
+            <span className="font-mono text-[10px] text-green-400">
+              2 steps skipped &middot; 40% faster
+            </span>
+            <span className="font-mono text-[10px] text-green-400/70">
+              $0.02 saved vs full re-run
+            </span>
           </div>
         </div>
       </div>
@@ -840,7 +859,7 @@ function CTASection() {
         </p>
 
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Link href="/sign-up">
+          <Link href="/docs">
             <Button size="lg" className="group px-8">
               <span className="flex items-center gap-2">
                 Get Started Free
@@ -889,13 +908,13 @@ export function FeatureSections() {
 
       <FeatureSection
         badge="FORK & REPLAY"
-        title="Time Travel for AI Debugging"
-        description="Fork any execution at any step. Modify the input. Replay from that point forward. No need to re-run the entire agent from scratch."
+        title="Replay From the Fork Point, Not From Scratch"
+        description="Fork any execution at any step. Modify the input. Only the steps after the fork point are re-executed — prior steps are reused instantly. No wasted compute, no waiting for the whole pipeline to run again."
         capabilities={[
-          'Click "Fork from here" on any step in the execution graph',
-          'Edit inputs in a real-time validated JSON editor',
-          'Watch replay progress with live cost tracking',
-          'View execution lineage showing all forked branches',
+          'Fork from any step — prior steps are reused, not re-run',
+          'Only replay the steps that actually need to change',
+          'Save 40-80% on compute costs with partial replay',
+          'Compare original vs forked output side-by-side',
         ]}
         visual={<ForkReplayVisual />}
       />
