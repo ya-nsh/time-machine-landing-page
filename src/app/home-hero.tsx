@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GitBranch, Play, Layers, ChevronRight, Terminal, Zap, Clock } from 'lucide-react';
+import { GitBranch, Play, Layers, ChevronRight, Zap, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FeatureSections } from './feature-sections';
 
@@ -163,13 +163,6 @@ function TerminalNav() {
           _
         </span>
       </div>
-
-      <Link
-        href="/sign-in"
-        className="font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
-      >
-        sign-in
-      </Link>
     </header>
   );
 }
@@ -237,7 +230,7 @@ function HeroSubtitle() {
   );
 }
 
-// CTA buttons with hover effects
+// CTA button
 function HeroActions() {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
@@ -247,16 +240,6 @@ function HeroActions() {
             Get Started
             <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </span>
-        </Button>
-      </Link>
-      <Link href="/sign-in">
-        <Button
-          variant="outline"
-          size="lg"
-          className="border-border/50 bg-transparent backdrop-blur-sm transition-all hover:border-primary/50 hover:bg-primary/5"
-        >
-          <Terminal className="mr-2 h-4 w-4" />
-          Sign In
         </Button>
       </Link>
     </div>

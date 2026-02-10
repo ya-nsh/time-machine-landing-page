@@ -116,30 +116,76 @@ function FeatureSection({
 }
 
 // ============================================================================
-// FORK & REPLAY VISUAL — Animated execution graph with fork
+// FORK & REPLAY VISUAL — Rich animated execution timeline with fork
 // ============================================================================
 
+// Step icons by type
+function StepIcon({ type, className }: { type: string; className?: string }) {
+  const baseClass = `h-3.5 w-3.5 ${className || ''}`;
+  switch (type) {
+    case 'llm':
+      return <Zap className={baseClass} />;
+    case 'tool':
+      return <Terminal className={baseClass} />;
+    case 'decision':
+      return <GitBranch className={baseClass} />;
+    case 'output':
+      return <Play className={baseClass} />;
+    default:
+      return <Layers className={baseClass} />;
+  }
+}
+
 function ForkReplayVisual() {
-  const [animated, setAnimated] = useState(false);
+  const [phase, setPhase] = useState<'building' | 'forking' | 'replaying' | 'done'>('building');
+  const [visibleSteps, setVisibleSteps] = useState(0);
+  const [replayProgress, setReplayProgress] = useState(0);
   const { ref, isInView } = useInView();
 
+  const originalSteps = [
+    { id: 1, type: 'llm', label: 'LLM Call', detail: 'gpt-4o', meta: '1,234 tok' },
+    { id: 2, type: 'tool', label: 'Tool: search_db', detail: 'query users', meta: '45ms' },
+    { id: 3, type: 'decision', label: 'Route Decision', detail: 'confidence: 0.72', meta: 'fork point' },
+    { id: 4, type: 'llm', label: 'LLM Call', detail: 'generate response', meta: '892 tok' },
+    { id: 5, type: 'output', label: 'Final Output', detail: 'sent to user', meta: '$0.03' },
+  ];
+
+  const forkedSteps = [
+    { id: 'f3', type: 'decision', label: 'Route Decision', detail: 'confidence: 0.95', meta: 'modified' },
+    { id: 'f4', type: 'llm', label: 'LLM Call', detail: 'new prompt', meta: '1,102 tok' },
+    { id: 'f5', type: 'output', label: 'New Output', detail: 'improved result', meta: '$0.02' },
+  ];
+
   useEffect(() => {
-    if (isInView) {
-      const timer = setTimeout(() => setAnimated(true), 500);
-      return () => clearTimeout(timer);
+    if (!isInView) return;
+
+    // Phase 1: Build up original steps one by one
+    const stepTimers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 0; i <= originalSteps.length; i++) {
+      stepTimers.push(setTimeout(() => setVisibleSteps(i), i * 200));
     }
+
+    // Phase 2: Fork animation
+    stepTimers.push(setTimeout(() => setPhase('forking'), originalSteps.length * 200 + 400));
+
+    // Phase 3: Replay with progress bar
+    stepTimers.push(setTimeout(() => {
+      setPhase('replaying');
+      setReplayProgress(0);
+    }, originalSteps.length * 200 + 1000));
+
+    // Animate replay progress
+    for (let i = 1; i <= 3; i++) {
+      stepTimers.push(setTimeout(() => setReplayProgress(i), originalSteps.length * 200 + 1000 + i * 500));
+    }
+
+    // Phase 4: Done
+    stepTimers.push(setTimeout(() => setPhase('done'), originalSteps.length * 200 + 3000));
+
+    return () => stepTimers.forEach(clearTimeout);
   }, [isInView]);
 
-  const nodes = [
-    { id: 1, label: 'Start', x: 50, y: 30 },
-    { id: 2, label: 'LLM Call', x: 50, y: 80 },
-    { id: 3, label: 'Tool Use', x: 50, y: 130 },
-    { id: 4, label: 'Decision', x: 50, y: 180 },
-    { id: 5, label: 'Output', x: 50, y: 230 },
-    // Fork branch
-    { id: 6, label: 'Forked', x: 140, y: 180, fork: true },
-    { id: 7, label: 'New Output', x: 140, y: 230, fork: true },
-  ];
+  const forkActive = phase === 'forking' || phase === 'replaying' || phase === 'done';
 
   return (
     <div ref={ref} className="relative">
@@ -150,93 +196,176 @@ function ForkReplayVisual() {
             'linear-gradient(135deg, hsl(25 95% 53% / 0.4), transparent 50%, hsl(25 95% 53% / 0.2))',
         }}
       >
-        <div className="rounded-lg bg-card/90 p-6 backdrop-blur-sm">
+        <div className="rounded-lg bg-card/90 p-5 backdrop-blur-sm">
           {/* Header */}
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <GitBranch className="h-4 w-4 text-primary" />
-              <span className="font-mono text-xs text-muted-foreground">execution_abc123</span>
+              <span className="font-mono text-xs text-muted-foreground">execution_7f3a</span>
             </div>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
-              5 steps
-            </span>
+            <div className="flex items-center gap-2">
+              {forkActive && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary transition-all duration-300">
+                  forked
+                </span>
+              )}
+              <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                5 steps
+              </span>
+            </div>
           </div>
 
-          {/* Graph */}
-          <div className="relative h-[280px]">
-            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 280">
-              {/* Main path */}
-              <path
-                d="M 50 45 L 50 230"
-                stroke="hsl(var(--muted-foreground))"
-                strokeWidth="2"
-                fill="none"
-                strokeDasharray="200"
-                strokeDashoffset={isInView ? 0 : 200}
-                style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-              />
-              {/* Fork path */}
-              <path
-                d="M 50 180 C 70 180, 120 160, 140 180 L 140 230"
-                stroke="hsl(25 95% 53%)"
-                strokeWidth="2"
-                fill="none"
-                strokeDasharray="100"
-                strokeDashoffset={animated ? 0 : 100}
-                style={{ transition: 'stroke-dashoffset 0.8s ease-out 0.5s' }}
-              />
-            </svg>
+          {/* Two-column layout: original + forked */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Original execution column */}
+            <div className="space-y-1.5">
+              <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                Original
+              </div>
+              {originalSteps.map((step, i) => {
+                const isVisible = i < visibleSteps;
+                const isDimmed = forkActive && i >= 2;
+                const isForkPoint = forkActive && i === 2;
 
-            {/* Nodes */}
-            {nodes.map((node, i) => (
+                return (
+                  <div
+                    key={step.id}
+                    className={`relative flex items-center gap-2.5 rounded-md border px-2.5 py-2 transition-all duration-400 ${
+                      isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+                    } ${
+                      isForkPoint
+                        ? 'border-primary/50 bg-primary/5'
+                        : isDimmed
+                          ? 'border-border/20 bg-card/30 opacity-40'
+                          : 'border-border/40 bg-card/50'
+                    }`}
+                    style={{ transitionDelay: `${i * 80}ms` }}
+                  >
+                    {/* Connector line to next step */}
+                    {i < originalSteps.length - 1 && (
+                      <div
+                        className={`absolute -bottom-1.5 left-[17px] h-1.5 w-px ${
+                          isDimmed ? 'bg-border/20' : 'bg-border/40'
+                        }`}
+                      />
+                    )}
+
+                    <div
+                      className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${
+                        isForkPoint
+                          ? 'bg-primary/20 text-primary'
+                          : isDimmed
+                            ? 'bg-muted/30 text-muted-foreground/40'
+                            : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <StepIcon type={step.type} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className={`truncate font-mono text-[11px] ${
+                            isForkPoint ? 'text-primary' : isDimmed ? 'text-muted-foreground/40' : 'text-foreground'
+                          }`}
+                        >
+                          {step.label}
+                        </span>
+                        <span className={`flex-shrink-0 font-mono text-[9px] ${isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'}`}>
+                          {step.meta}
+                        </span>
+                      </div>
+                      <span className={`font-mono text-[9px] ${isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'}`}>
+                        {step.detail}
+                      </span>
+                    </div>
+
+                    {/* Fork indicator on the fork point step */}
+                    {isForkPoint && (
+                      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 translate-x-full">
+                        <div className="flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-medium text-primary-foreground shadow-lg shadow-primary/20">
+                          <GitBranch className="h-2.5 w-2.5" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Forked execution column */}
+            <div className="space-y-1.5">
+              <div className={`mb-2 font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${forkActive ? 'text-primary/60' : 'text-transparent'}`}>
+                Forked
+              </div>
+
+              {/* Empty spacers for steps 1-2 (shared with original) */}
+              <div className={`flex items-center gap-2.5 rounded-md border border-dashed px-2.5 py-2 transition-all duration-400 ${forkActive ? 'border-border/20 opacity-100' : 'border-transparent opacity-0'}`}>
+                <span className="font-mono text-[10px] text-muted-foreground/30">steps 1-2 shared</span>
+              </div>
+
+              {/* Forked steps */}
+              {forkedSteps.map((step, i) => {
+                const isVisible = phase === 'replaying' ? replayProgress > i : phase === 'done';
+
+                return (
+                  <div
+                    key={step.id}
+                    className={`relative flex items-center gap-2.5 rounded-md border px-2.5 py-2 transition-all duration-400 ${
+                      isVisible
+                        ? 'border-primary/40 bg-primary/5 opacity-100 translate-x-0'
+                        : 'border-transparent bg-transparent opacity-0 translate-x-3'
+                    }`}
+                    style={{ transitionDelay: `${i * 100}ms` }}
+                  >
+                    {/* Connector line */}
+                    {i < forkedSteps.length - 1 && isVisible && (
+                      <div className="absolute -bottom-1.5 left-[17px] h-1.5 w-px bg-primary/30" />
+                    )}
+
+                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+                      <StepIcon type={step.type} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="truncate font-mono text-[11px] text-primary">
+                          {step.label}
+                        </span>
+                        <span className="flex-shrink-0 font-mono text-[9px] text-primary/50">
+                          {step.meta}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[9px] text-primary/50">
+                        {step.detail}
+                      </span>
+                    </div>
+
+                    {/* Replay pulse on the currently replaying step */}
+                    {phase === 'replaying' && replayProgress === i + 1 && (
+                      <div className="absolute inset-0 rounded-md border border-primary/50" style={{ animation: 'glow-pulse 1s ease-in-out infinite' }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Replay progress bar */}
+          <div className={`mt-4 transition-all duration-500 ${phase === 'replaying' || phase === 'done' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {phase === 'done' ? 'Replay complete' : 'Replaying from step 3...'}
+              </span>
+              <span className="font-mono text-[10px] text-primary">
+                {Math.min(replayProgress, 3)}/3 steps
+              </span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-muted/50">
               <div
-                key={node.id}
-                className={`absolute flex items-center gap-2 transition-all duration-500 ${
-                  node.fork
-                    ? animated
-                      ? 'opacity-100 translate-x-0'
-                      : 'opacity-0 -translate-x-4'
-                    : isInView
-                      ? 'opacity-100 translate-y-0'
-                      : 'opacity-0 translate-y-2'
-                }`}
-                style={{
-                  left: `${node.x}px`,
-                  top: `${node.y}px`,
-                  transform: 'translate(-50%, -50%)',
-                  transitionDelay: node.fork ? '700ms' : `${i * 100}ms`,
-                }}
-              >
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
-                    node.fork
-                      ? 'border-primary bg-primary/20 text-primary'
-                      : 'border-border bg-card text-muted-foreground'
-                  }`}
-                >
-                  <span className="font-mono text-[10px]">{node.id}</span>
-                </div>
-                <span
-                  className={`whitespace-nowrap font-mono text-xs ${
-                    node.fork ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-                >
-                  {node.label}
-                </span>
-              </div>
-            ))}
-
-            {/* Fork button indicator */}
-            <div
-              className={`absolute transition-all duration-500 ${
-                animated ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
-              }`}
-              style={{ left: '78px', top: '168px', transitionDelay: '400ms' }}
-            >
-              <div className="flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground shadow-lg">
-                <GitBranch className="h-3 w-3" />
-                Fork
-              </div>
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${(Math.min(replayProgress, 3) / 3) * 100}%` }}
+              />
             </div>
           </div>
         </div>
@@ -717,15 +846,6 @@ function CTASection() {
                 Get Started Free
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </span>
-            </Button>
-          </Link>
-          <Link href="/sign-in">
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-border/50 bg-transparent backdrop-blur-sm transition-all hover:border-primary/50 hover:bg-primary/5"
-            >
-              View Documentation
             </Button>
           </Link>
         </div>
