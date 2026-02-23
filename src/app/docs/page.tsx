@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { Highlight, themes } from 'prism-react-renderer';
 import {
   GitBranch,
   Layers,
@@ -49,11 +50,21 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function CodeBlock({ children, title }: { children: string; title?: string }) {
+function inferLanguage(title?: string): string {
+  if (!title) return 'typescript';
+  if (title.endsWith('.ts') || title.endsWith('.tsx')) return 'typescript';
+  if (title.endsWith('.js') || title.endsWith('.jsx')) return 'javascript';
+  if (title.endsWith('.json')) return 'json';
+  if (title === 'terminal' || title === 'bash' || title === 'shell') return 'bash';
+  return 'typescript';
+}
+
+function CodeBlock({ children, title, language }: { children: string; title?: string; language?: string }) {
+  const lang = language || inferLanguage(title);
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-card/80">
+    <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-[#0d1117]">
       {title && (
-        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
+        <div className="flex items-center gap-2 border-b border-border/40 bg-[#161b22] px-4 py-2">
           <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
           <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
           <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
@@ -62,9 +73,21 @@ function CodeBlock({ children, title }: { children: string; title?: string }) {
       )}
       <div className="relative">
         <CopyButton text={children} />
-        <pre className="overflow-x-auto p-4 pr-12">
-          <code className="font-mono text-sm leading-relaxed text-foreground/90">{children}</code>
-        </pre>
+        <Highlight theme={themes.nightOwl} code={children.trim()} language={lang}>
+          {({ tokens, getLineProps, getTokenProps }) => (
+            <pre className="overflow-x-auto p-4 pr-12" style={{ background: 'transparent' }}>
+              <code className="font-mono text-sm leading-relaxed">
+                {tokens.map((line, i) => (
+                  <div key={i} {...getLineProps({ line })}>
+                    {line.map((token, key) => (
+                      <span key={key} {...getTokenProps({ token })} />
+                    ))}
+                  </div>
+                ))}
+              </code>
+            </pre>
+          )}
+        </Highlight>
       </div>
     </div>
   );
