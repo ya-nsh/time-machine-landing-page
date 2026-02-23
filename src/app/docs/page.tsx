@@ -218,6 +218,7 @@ const NAV_SECTIONS = [
     title: 'Integrations',
     items: [
       { label: 'LangChain Adapter', id: 'langchain' },
+      { label: 'OpenRouter', id: 'openrouter' },
       { label: 'Utilities', id: 'utilities' },
       { label: 'Cost Tracking', id: 'cost-tracking' },
     ],
@@ -839,6 +840,112 @@ await execution.complete();`}</CodeBlock>
             </div>
           </section>
 
+          {/* ─── OpenRouter ────────────────────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="openrouter" />
+            <h2 className="mb-2 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <Workflow className="h-6 w-6 text-primary" />
+              OpenRouter
+            </h2>
+            <p className="mb-6 text-sm text-muted-foreground">
+              <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">OpenRouter</a> provides a unified API across 200+ models — Anthropic, OpenAI, Google, DeepSeek, Qwen, Llama, and more — through a single endpoint and API key. Time Machine works natively with OpenRouter with zero extra configuration.
+            </p>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">Setup</h3>
+            <CodeBlock title="openrouter.ts">{`import { TimeMachine } from '@timemachine-sdk/sdk';
+
+const tm = new TimeMachine({
+  apiKey: process.env.TIMEMACHINE_API_KEY!,
+  // No changes needed — configure OpenRouter in your LLM client directly
+});
+
+// Use OpenRouter as your LLM provider
+import OpenAI from 'openai';
+
+const openrouter = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY!,
+  baseURL: 'https://openrouter.ai/api/v1',
+  defaultHeaders: {
+    'HTTP-Referer': 'https://your-app.com',   // optional, for rankings
+    'X-Title': 'Your App Name',               // optional
+  },
+});`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">Tracking OpenRouter calls</h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Capture any model routed through OpenRouter — the model name is passed through transparently.
+            </p>
+            <CodeBlock title="openrouter-execution.ts">{`const execution = await tm.startExecution({
+  name: 'openrouter-agent',
+  metadata: { router: 'openrouter' },
+});
+
+const step = execution.step('llm_call', {
+  model: 'anthropic/claude-opus-4',   // OpenRouter model ID
+  messages: [{ role: 'user', content: 'Explain quantum entanglement' }],
+});
+
+const response = await openrouter.chat.completions.create({
+  model: 'anthropic/claude-opus-4',
+  messages: [{ role: 'user', content: 'Explain quantum entanglement' }],
+});
+
+await step.complete({
+  output: { message: response.choices[0].message.content },
+  tokensIn: response.usage?.prompt_tokens,
+  tokensOut: response.usage?.completion_tokens,
+});
+
+await execution.complete();`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">LangChain + OpenRouter</h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              The LangChain adapter works seamlessly — just point your ChatOpenAI instance at OpenRouter.
+            </p>
+            <CodeBlock title="openrouter-langchain.ts">{`import { ChatOpenAI } from '@langchain/openai';
+import { createLangChainHandler } from '@timemachine-sdk/sdk/adapters';
+
+const model = new ChatOpenAI({
+  modelName: 'google/gemini-2.5-pro',   // or any OpenRouter model
+  openAIApiKey: process.env.OPENROUTER_API_KEY!,
+  configuration: {
+    baseURL: 'https://openrouter.ai/api/v1',
+  },
+});
+
+const { handler, execution } = await createLangChainHandler(tm, {
+  name: 'gemini-via-openrouter',
+});
+
+// All LLM calls automatically captured
+const result = await model.invoke('What is the latest news?', {
+  callbacks: [handler],
+});
+
+await execution.complete();`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">Why use OpenRouter with Time Machine</h3>
+            <ApiTable
+              headers={['Benefit', 'Detail']}
+              rows={[
+                ['Single API key', 'Access 200+ models — no separate accounts for Anthropic, OpenAI, Google, etc.'],
+                ['Model fallback', 'Configure automatic fallback if a model is unavailable or rate-limited'],
+                ['Cost optimization', 'Route cheap tasks to smaller models, complex ones to frontier models'],
+                ['Unified billing', 'One invoice for all LLM costs across providers'],
+                ['Model comparison', 'Easily A/B test models by swapping the model string — Time Machine captures both'],
+              ]}
+            />
+
+            <div className="mt-6 rounded-lg border border-blue-500/20 bg-blue-50 p-4 dark:bg-blue-500/5">
+              <p className="flex items-start gap-2 text-sm text-blue-600 dark:text-blue-400">
+                <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>
+                  <strong>Tip:</strong> OpenRouter model IDs use the format <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">provider/model-name</code> (e.g. <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">deepseek/deepseek-r1</code>, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">qwen/qwen3-235b-a22b</code>). Time Machine stores the full model string in your execution trace for accurate attribution.
+                </span>
+              </p>
+            </div>
+          </section>
+
           {/* ─── Utilities ─────────────────────────────────── */}
           <section className="mb-20">
             <SectionAnchor id="utilities" />
@@ -1140,63 +1247,151 @@ interface FallbackPricingConfig {
               Supported Models
             </h2>
             <p className="mb-6 text-sm text-muted-foreground">
-              Built-in pricing for 30+ models. For unlisted models, configure fallback pricing with <code className="rounded bg-card px-1.5 py-0.5 font-mono text-xs text-primary">configureFallbackPricing()</code>.
+              Built-in pricing for frontier and open-source models (2025). For unlisted models use <code className="rounded bg-card px-1.5 py-0.5 font-mono text-xs text-primary">configureFallbackPricing()</code>. Prices in USD per 1,000 tokens — approximate and subject to provider changes.
             </p>
 
             <div className="space-y-8">
+              {/* Anthropic */}
               <div>
-                <h3 className="mb-3 font-mono text-sm font-semibold text-foreground">OpenAI</h3>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">Anthropic — Claude 4 series</h3>
+                <p className="mb-3 font-mono text-xs text-muted-foreground/70">Current flagship family (2025)</p>
                 <ApiTable
-                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)']}
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
                   rows={[
-                    ['gpt-4', '$0.030', '$0.060'],
-                    ['gpt-4-turbo', '$0.010', '$0.030'],
-                    ['gpt-4o', '$0.005', '$0.015'],
-                    ['gpt-4o-mini', '$0.000150', '$0.000600'],
-                    ['gpt-3.5-turbo', '$0.0005', '$0.0015'],
-                    ['o1', '$0.015', '$0.060'],
-                    ['o1-mini', '$0.003', '$0.012'],
+                    ['claude-opus-4-6', '$0.01500', '$0.07500', 'Most powerful, coding & reasoning'],
+                    ['claude-sonnet-4-6', '$0.00300', '$0.01500', 'Best balance of speed & quality'],
+                    ['claude-haiku-4-5', '$0.00080', '$0.00400', 'Fastest, lowest cost'],
+                    ['claude-3.5-sonnet', '$0.00300', '$0.01500', 'Previous gen, still widely used'],
+                    ['claude-3.5-haiku', '$0.00080', '$0.00400', 'Previous gen fast model'],
                   ]}
                 />
               </div>
+
+              {/* OpenAI */}
               <div>
-                <h3 className="mb-3 font-mono text-sm font-semibold text-foreground">Anthropic</h3>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">OpenAI — GPT-4.x & o-series</h3>
+                <p className="mb-3 font-mono text-xs text-muted-foreground/70">Including reasoning models (2025)</p>
                 <ApiTable
-                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)']}
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
                   rows={[
-                    ['claude-3-opus', '$0.015', '$0.075'],
-                    ['claude-3-sonnet', '$0.003', '$0.015'],
-                    ['claude-3-haiku', '$0.00025', '$0.00125'],
-                    ['claude-3.5-sonnet', '$0.003', '$0.015'],
-                    ['claude-3.5-haiku', '$0.001', '$0.005'],
+                    ['gpt-4.5', '$0.07500', '$0.15000', 'Multimodal frontier, highest quality'],
+                    ['gpt-4.1', '$0.00200', '$0.00800', 'Efficient, strong coding'],
+                    ['gpt-4o', '$0.00500', '$0.01500', 'Omni model, vision + text'],
+                    ['gpt-4o-mini', '$0.00015', '$0.00060', 'Fast & cheap for simple tasks'],
+                    ['o3', '$0.01000', '$0.04000', 'Reasoning model, complex problems'],
+                    ['o4-mini', '$0.00110', '$0.00440', 'Reasoning, optimized for cost'],
+                    ['o1', '$0.01500', '$0.06000', 'Previous reasoning generation'],
                   ]}
                 />
               </div>
+
+              {/* Google */}
               <div>
-                <h3 className="mb-3 font-mono text-sm font-semibold text-foreground">Google</h3>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">Google — Gemini 2.5</h3>
+                <p className="mb-3 font-mono text-xs text-muted-foreground/70">Long context, multimodal (2025)</p>
                 <ApiTable
-                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)']}
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
                   rows={[
-                    ['gemini-pro', '$0.0005', '$0.0015'],
-                    ['gemini-1.5-pro', '$0.00125', '$0.005'],
-                    ['gemini-1.5-flash', '$0.000075', '$0.000300'],
-                    ['gemini-2.0-flash', '$0.000075', '$0.000300'],
+                    ['gemini-2.5-pro', '$0.00125', '$0.01000', '1M context, top coding & reasoning'],
+                    ['gemini-2.5-flash', '$0.00008', '$0.00030', 'Low latency, best value'],
+                    ['gemini-2.0-flash', '$0.00010', '$0.00040', 'Previous gen flash'],
+                    ['gemini-1.5-pro', '$0.00125', '$0.00500', 'Legacy, 2M context'],
                   ]}
                 />
               </div>
+
+              {/* DeepSeek */}
               <div>
-                <h3 className="mb-3 font-mono text-sm font-semibold text-foreground">Mistral &amp; Cohere</h3>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">DeepSeek</h3>
+                <p className="mb-3 font-mono text-xs text-muted-foreground/70">Open-source, extremely cost-efficient</p>
                 <ApiTable
-                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)']}
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
                   rows={[
-                    ['mistral-small', '$0.001', '$0.003'],
-                    ['mistral-medium', '$0.0027', '$0.0081'],
-                    ['mistral-large', '$0.004', '$0.012'],
-                    ['command-r', '$0.0005', '$0.0015'],
-                    ['command-r-plus', '$0.003', '$0.015'],
+                    ['deepseek-r1', '$0.00014', '$0.00219', 'Reasoning model, matches o1 quality'],
+                    ['deepseek-v3', '$0.00007', '$0.00110', 'Dense MoE, strong general tasks'],
+                    ['deepseek-r1-zero', '$0.00014', '$0.00219', 'RL-trained reasoning, no SFT'],
                   ]}
                 />
               </div>
+
+              {/* Qwen */}
+              <div>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">Qwen — Alibaba</h3>
+                <p className="mb-3 font-mono text-xs text-muted-foreground/70">Strong multilingual & coding</p>
+                <ApiTable
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
+                  rows={[
+                    ['qwen3-235b-a22b', '$0.00022', '$0.00088', 'Flagship MoE, top open model'],
+                    ['qwen3-32b', '$0.00018', '$0.00072', 'Dense, strong reasoning'],
+                    ['qwen2.5-72b', '$0.00023', '$0.00069', 'Previous gen, widely deployed'],
+                    ['qwen2.5-coder-32b', '$0.00015', '$0.00060', 'Best-in-class code generation'],
+                  ]}
+                />
+              </div>
+
+              {/* Kimi / Moonshot */}
+              <div>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">Kimi — Moonshot AI</h3>
+                <p className="mb-3 font-mono text-xs text-muted-foreground/70">Long-context specialist (Chinese frontier lab)</p>
+                <ApiTable
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
+                  rows={[
+                    ['kimi-k2', '$0.00060', '$0.00250', 'Agentic reasoning, 1M context'],
+                    ['moonshot-v1-128k', '$0.01200', '$0.01200', 'Ultra long context'],
+                    ['moonshot-v1-32k', '$0.00400', '$0.00400', 'Standard context window'],
+                  ]}
+                />
+              </div>
+
+              {/* GLM / Zhipu */}
+              <div>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">GLM — Zhipu AI</h3>
+                <p className="mb-3 font-mono text-xs text-muted-foreground/70">Chinese lab, strong bilingual performance</p>
+                <ApiTable
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
+                  rows={[
+                    ['glm-5', '$0.00100', '$0.00300', 'Latest flagship, vision + reasoning'],
+                    ['glm-4-plus', '$0.00070', '$0.00140', 'Enhanced GLM-4, long context'],
+                    ['glm-4', '$0.00014', '$0.00014', 'Fast, cost-effective baseline'],
+                  ]}
+                />
+              </div>
+
+              {/* Meta Llama */}
+              <div>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">Meta — Llama 4</h3>
+                <p className="mb-3 font-mono text-xs text-muted-foreground/70">Open weights, free to self-host</p>
+                <ApiTable
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
+                  rows={[
+                    ['llama-4-maverick', '$0.00019', '$0.00085', '17B MoE, multimodal'],
+                    ['llama-4-scout', '$0.00017', '$0.00017', '17B MoE, ultra-efficient'],
+                    ['llama-3.3-70b', '$0.00023', '$0.00040', 'Previous gen, solid baseline'],
+                  ]}
+                />
+              </div>
+
+              {/* Mistral */}
+              <div>
+                <h3 className="mb-1 font-mono text-sm font-semibold text-foreground">Mistral</h3>
+                <ApiTable
+                  headers={['Model', 'Input ($/1k)', 'Output ($/1k)', 'Notes']}
+                  rows={[
+                    ['mistral-large-2', '$0.00200', '$0.00600', 'Top Mistral model'],
+                    ['mistral-small-3', '$0.00010', '$0.00030', 'Fast, lightweight'],
+                    ['codestral', '$0.00030', '$0.00090', 'Code-specialized'],
+                  ]}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-lg border border-border/40 bg-card/50 p-4">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                <strong className="text-foreground">Pricing note:</strong> Prices are approximate as of mid-2025 and change frequently. For models not listed, use{' '}
+                <code className="rounded bg-card px-1 py-0.5 font-mono text-xs text-primary">configureFallbackPricing()</code> or pass{' '}
+                <code className="rounded bg-card px-1 py-0.5 font-mono text-xs text-primary">cost</code> directly in{' '}
+                <code className="rounded bg-card px-1 py-0.5 font-mono text-xs text-primary">step.complete()</code>. When using OpenRouter, pass the model string as-is (e.g. <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">deepseek/deepseek-r1</code>) — it will be stored in the execution trace for your records.
+              </p>
             </div>
           </section>
 
