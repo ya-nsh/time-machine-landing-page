@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { Highlight, themes } from 'prism-react-renderer';
 import {
   GitBranch,
@@ -29,6 +30,8 @@ import {
   TreePine,
   ExternalLink,
   Hash,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 /* ─── Reusable Components ─────────────────────────────────────────── */
@@ -50,6 +53,29 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return <div className="h-8 w-8" />;
+  }
+
+  const isDark = theme === 'dark';
+
+  return (
+    <button
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      className="flex h-8 w-8 items-center justify-center rounded-md border border-border/40 text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  );
+}
+
 function inferLanguage(title?: string): string {
   if (!title) return 'typescript';
   if (title.endsWith('.ts') || title.endsWith('.tsx')) return 'typescript';
@@ -61,10 +87,14 @@ function inferLanguage(title?: string): string {
 
 function CodeBlock({ children, title, language }: { children: string; title?: string; language?: string }) {
   const lang = language || inferLanguage(title);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const prismTheme = isDark ? themes.nightOwl : themes.github;
+
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-[#0d1117]">
+    <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-gray-50 dark:bg-[#0d1117]">
       {title && (
-        <div className="flex items-center gap-2 border-b border-border/40 bg-[#161b22] px-4 py-2">
+        <div className="flex items-center gap-2 border-b border-border/40 bg-gray-100 px-4 py-2 dark:bg-[#161b22]">
           <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
           <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
           <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
@@ -73,7 +103,7 @@ function CodeBlock({ children, title, language }: { children: string; title?: st
       )}
       <div className="relative">
         <CopyButton text={children} />
-        <Highlight theme={themes.nightOwl} code={children.trim()} language={lang}>
+        <Highlight theme={prismTheme} code={children.trim()} language={lang}>
           {({ tokens, getLineProps, getTokenProps }) => (
             <pre className="overflow-x-auto p-4 pr-12" style={{ background: 'transparent' }}>
               <code className="font-mono text-sm leading-relaxed">
@@ -338,16 +368,19 @@ export default function DocsPage() {
             <span className="text-muted-foreground">timemachine</span>
             <span className="text-primary">docs</span>
           </div>
-          <a
-            href="https://www.npmjs.com/package/@timemachine-sdk/sdk"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-md border border-border/40 px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-          >
-            <Package className="h-3 w-3" />
-            npm
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <a
+              href="https://www.npmjs.com/package/@timemachine-sdk/sdk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-md border border-border/40 px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+            >
+              <Package className="h-3 w-3" />
+              npm
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
         </div>
       </header>
 
@@ -796,8 +829,8 @@ await execution.complete();`}</CodeBlock>
               ]}
             />
 
-            <div className="mt-6 rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
-              <p className="flex items-start gap-2 text-sm text-blue-400">
+            <div className="mt-6 rounded-lg border border-blue-500/20 bg-blue-50 p-4 dark:bg-blue-500/5">
+              <p className="flex items-start gap-2 text-sm text-blue-600 dark:text-blue-400">
                 <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span>
                   <strong>Security:</strong> Sensitive parameters (<code className="rounded bg-card px-1 py-0.5 font-mono text-xs">api_key</code>, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">apiKey</code>, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">callbacks</code>) are automatically stripped from captured data.
