@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GitBranch, Play, Layers, ChevronRight, Zap, Clock } from 'lucide-react';
+import { GitBranch, Play, Layers, ChevronRight, Zap, Clock, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FeatureSections } from './feature-sections';
+import { DASHBOARD_URL } from '@/lib/constants';
 
 // Floating code particles in background
 function FloatingParticles() {
@@ -242,6 +243,14 @@ function HeroActions() {
           </span>
         </Button>
       </Link>
+      <a href={`${DASHBOARD_URL}/sign-up`} target="_blank" rel="noopener noreferrer">
+        <Button size="lg" variant="outline" className="group px-8 border-border/40 hover:border-primary/50">
+          <span className="flex items-center gap-2">
+            Sign Up
+            <ExternalLink className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+          </span>
+        </Button>
+      </a>
     </div>
   );
 }

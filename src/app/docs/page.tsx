@@ -32,7 +32,9 @@ import {
   Hash,
   Sun,
   Moon,
+  KeyRound,
 } from 'lucide-react';
+import { DASHBOARD_URL } from '@/lib/constants';
 
 /* ─── Reusable Components ─────────────────────────────────────────── */
 
@@ -201,6 +203,7 @@ const NAV_SECTIONS = [
     items: [
       { label: 'Overview', id: 'overview' },
       { label: 'Installation', id: 'installation' },
+      { label: 'Get API Key', id: 'get-api-key' },
       { label: 'Quick Start', id: 'quick-start' },
       { label: 'Core Concepts', id: 'concepts' },
     ],
@@ -464,6 +467,87 @@ import { calculateCost, hasModelPricing, normalizeModelName }
             </div>
           </section>
 
+          {/* ─── Get Your API Key ─────────────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="get-api-key" />
+            <h2 className="mb-8 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <KeyRound className="h-6 w-6 text-primary" />
+              Get Your API Key
+            </h2>
+            <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+              Before using the SDK, you need an API key. Follow these steps to get one from the Time Machine dashboard.
+            </p>
+
+            <div className="space-y-6">
+              {/* Step 1 */}
+              <div className="rounded-lg border border-border/40 bg-card/50 p-6">
+                <h3 className="mb-2 font-mono text-sm font-medium text-foreground">
+                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">1</span>
+                  Create an account
+                </h3>
+                <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
+                  Sign up for a free Time Machine account. No credit card required.
+                </p>
+                <a
+                  href={`${DASHBOARD_URL}/sign-up`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  Sign Up
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+
+              {/* Step 2 */}
+              <div className="rounded-lg border border-border/40 bg-card/50 p-6">
+                <h3 className="mb-2 font-mono text-sm font-medium text-foreground">
+                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">2</span>
+                  Create a project
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Once logged in, click <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">New Project</span> and
+                  give it a name (e.g. &quot;my-agent&quot;). A project groups all your executions together.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="rounded-lg border border-border/40 bg-card/50 p-6">
+                <h3 className="mb-2 font-mono text-sm font-medium text-foreground">
+                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">3</span>
+                  Copy your API key
+                </h3>
+                <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
+                  Your API key is displayed once when the project is created. It starts with{' '}
+                  <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">tm_</code>.
+                </p>
+                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-500" />
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                      The API key is shown <strong>only once</strong>. Copy it immediately and store it somewhere safe.
+                      If you lose it, you&apos;ll need to generate a new one from project settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="rounded-lg border border-border/40 bg-card/50 p-6">
+                <h3 className="mb-3 font-mono text-sm font-medium text-foreground">
+                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">4</span>
+                  Set your environment variable
+                </h3>
+                <CodeBlock title="terminal">{`export TIMEMACHINE_API_KEY=tm_your_key_here`}</CodeBlock>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  Or add it to a <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">.env</code> file
+                  in your project root:
+                </p>
+                <CodeBlock title=".env">{`TIMEMACHINE_API_KEY=tm_your_key_here`}</CodeBlock>
+              </div>
+            </div>
+          </section>
+
           {/* ─── Quick Start ───────────────────────────────── */}
           <section className="mb-20">
             <SectionAnchor id="quick-start" />
@@ -471,6 +555,14 @@ import { calculateCost, hasModelPricing, normalizeModelName }
               <Code2 className="h-6 w-6 text-primary" />
               Quick Start
             </h2>
+
+            <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+              Don&apos;t have an API key yet?{' '}
+              <a href="#get-api-key" className="font-medium text-primary underline underline-offset-4 hover:text-primary/80">
+                Get one here
+              </a>
+              .
+            </p>
 
             <div className="space-y-8">
               <div>
