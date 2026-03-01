@@ -11,6 +11,9 @@ import {
   ChevronRight,
   Terminal,
   Play,
+  Pause,
+  SkipBack,
+  SkipForward,
   ArrowRight,
   Zap,
   Activity,
@@ -1173,6 +1176,259 @@ function DataDriftVisual() {
 }
 
 // ============================================================================
+// TIMELINE SCRUBBER VISUAL — Interactive session replay scrubber
+// ============================================================================
+
+function TimelineScrubberVisual() {
+  const { ref, isInView } = useInView();
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const timelineBarRef = useRef<HTMLDivElement>(null);
+
+  const events = [
+    { id: 1,  type: 'user',  label: 'Add rate limiting to auth endpoints',      file: null,          time: '0:00', pos: 0  },
+    { id: 2,  type: 'agent', label: 'Reading existing codebase...',              file: null,          time: '0:08', pos: 3  },
+    { id: 3,  type: 'read',  label: 'auth.ts',                                  file: 'auth.ts',     time: '0:09', pos: 5  },
+    { id: 4,  type: 'read',  label: 'middleware.ts',                             file: 'middleware.ts', time: '0:10', pos: 7  },
+    { id: 5,  type: 'read',  label: 'redis.ts',                                 file: 'redis.ts',    time: '0:12', pos: 9  },
+    { id: 6,  type: 'bash',  label: 'pnpm test',                                file: null,          time: '0:22', pos: 16 },
+    { id: 7,  type: 'agent', label: 'Planning sliding window approach...',       file: null,          time: '0:38', pos: 24 },
+    { id: 8,  type: 'edit',  label: 'ratelimit.ts',                             file: 'ratelimit.ts', time: '0:55', pos: 34 },
+    { id: 9,  type: 'edit',  label: 'auth.ts',                                  file: 'auth.ts',     time: '1:04', pos: 38 },
+    { id: 10, type: 'edit',  label: 'redis.ts',                                 file: 'redis.ts',    time: '1:10', pos: 42 },
+    { id: 11, type: 'bash',  label: 'pnpm test --filter ratelimit',             file: null,          time: '1:12', pos: 45 },
+    { id: 12, type: 'bash',  label: 'pnpm build',                               file: null,          time: '1:22', pos: 49 },
+    { id: 13, type: 'agent', label: 'Tests passing, updating docs...',           file: null,          time: '1:28', pos: 53 },
+    { id: 14, type: 'edit',  label: 'README.md',                                file: 'README.md',   time: '1:35', pos: 57 },
+    { id: 15, type: 'user',  label: 'Also add per-endpoint limits',             file: null,          time: '2:28', pos: 66 },
+    { id: 16, type: 'agent', label: 'Good idea, adding per-route config...',    file: null,          time: '2:30', pos: 68 },
+    { id: 17, type: 'read',  label: 'routes.ts',                                file: 'routes.ts',   time: '2:41', pos: 73 },
+    { id: 18, type: 'edit',  label: 'ratelimit.ts',                             file: 'ratelimit.ts', time: '2:48', pos: 78 },
+    { id: 19, type: 'bash',  label: 'pnpm test',                                file: null,          time: '3:02', pos: 84 },
+    { id: 20, type: 'agent', label: 'All tests passing. Implementation complete!', file: null,       time: '3:14', pos: 92 },
+  ] as const;
+
+  const eventDelays: Record<string, number> = {
+    user: 850,
+    agent: 650,
+    edit: 320,
+    read: 180,
+    bash: 480,
+  };
+
+  const typeColors: Record<string, string> = {
+    read:  'bg-blue-500',
+    edit:  'bg-orange-500',
+    bash:  'bg-green-500',
+    agent: 'bg-violet-500',
+    user:  'bg-foreground/70',
+  };
+
+  const typeTextColors: Record<string, string> = {
+    read:  'text-blue-400',
+    edit:  'text-orange-400',
+    bash:  'text-green-400',
+    agent: 'text-violet-400',
+    user:  'text-foreground/80',
+  };
+
+  // Start auto-playing when visible
+  useEffect(() => {
+    if (isInView) {
+      const t = setTimeout(() => setIsPlaying(true), 700);
+      return () => clearTimeout(t);
+    }
+  }, [isInView]);
+
+  // Advance through events while playing
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (currentIdx >= events.length - 1) {
+      setIsPlaying(false);
+      return;
+    }
+    const event = events[currentIdx];
+    const delay = eventDelays[event.type] ?? 400;
+    const timer = setTimeout(() => setCurrentIdx((prev) => prev + 1), delay);
+    return () => clearTimeout(timer);
+  }, [isPlaying, currentIdx]);
+
+  // Auto-restart after playback ends
+  useEffect(() => {
+    if (!isPlaying && currentIdx === events.length - 1) {
+      const timer = setTimeout(() => {
+        setCurrentIdx(0);
+        setIsPlaying(true);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isPlaying, currentIdx]);
+
+  const stepBack = () => {
+    setIsPlaying(false);
+    setCurrentIdx((prev) => Math.max(0, prev - 1));
+  };
+
+  const stepForward = () => {
+    setIsPlaying(false);
+    setCurrentIdx((prev) => Math.min(events.length - 1, prev + 1));
+  };
+
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!timelineBarRef.current) return;
+    const rect = timelineBarRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const nearest = events.reduce((prev, curr) =>
+      Math.abs(curr.pos - pct) < Math.abs(prev.pos - pct) ? curr : prev
+    );
+    setCurrentIdx(events.indexOf(nearest));
+    setIsPlaying(false);
+  };
+
+  const current = events[currentIdx];
+
+  return (
+    <div ref={ref} className="relative">
+      <div
+        className="relative rounded-lg p-[1px]"
+        style={{
+          background: 'linear-gradient(135deg, hsl(25 95% 53% / 0.4), transparent 50%, hsl(25 95% 53% / 0.2))',
+        }}
+      >
+        <div className="rounded-lg bg-card/90 p-5 backdrop-blur-sm">
+          {/* Session metadata header */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Play className="h-4 w-4 text-primary" />
+              <span className="font-mono text-xs text-muted-foreground">Session Replay</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {['aurora-api', 'Opus 4.6', '3:14', 'fp 2'].map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+              <span className="rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[9px] text-primary">
+                {currentIdx + 1}/{events.length}
+              </span>
+            </div>
+          </div>
+
+          {/* Timeline scrubber bar */}
+          <div
+            ref={timelineBarRef}
+            className="relative h-10 cursor-pointer select-none overflow-visible rounded-md border border-border/30 bg-muted/40"
+            onClick={handleTimelineClick}
+          >
+            {/* Activity density glow overlay */}
+            <div
+              className="pointer-events-none absolute inset-0 rounded-md opacity-15"
+              style={{
+                background:
+                  'radial-gradient(ellipse 20% 100% at 7% 50%, hsl(25 95% 53% / 0.7), transparent), ' +
+                  'radial-gradient(ellipse 18% 100% at 42% 50%, hsl(25 95% 53% / 0.5), transparent), ' +
+                  'radial-gradient(ellipse 14% 100% at 75% 50%, hsl(25 95% 53% / 0.4), transparent)',
+              }}
+            />
+
+            {/* Played progress fill */}
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 top-0 rounded-l-md bg-primary/5 transition-all duration-300"
+              style={{ width: `${current.pos}%` }}
+            />
+
+            {/* Event blocks */}
+            {events.map((ev, i) => {
+              const isActive  = i <= currentIdx;
+              const isCurrent = i === currentIdx;
+              return (
+                <div
+                  key={ev.id}
+                  className={`absolute rounded-sm transition-all duration-150 ${typeColors[ev.type]} ${
+                    isCurrent ? 'opacity-100' : isActive ? 'opacity-65' : 'opacity-15'
+                  }`}
+                  style={{
+                    left: `${ev.pos}%`,
+                    top:    isCurrent ? '4px'  : (ev.type === 'agent' || ev.type === 'user') ? '8px'  : '10px',
+                    height: isCurrent ? '32px' : (ev.type === 'agent' || ev.type === 'user') ? '22px' : '18px',
+                    width:  (ev.type === 'agent' || ev.type === 'user') ? '5px' : ev.type === 'bash' ? '4px' : '3px',
+                    transform: 'translateX(-50%)',
+                  }}
+                />
+              );
+            })}
+
+            {/* Scrubber playhead */}
+            <div
+              className="pointer-events-none absolute bottom-0 top-0 flex flex-col items-center transition-all duration-300"
+              style={{ left: `${current.pos}%` }}
+            >
+              <div className="relative h-full w-px bg-foreground/70 shadow-[0_0_6px_rgba(255,255,255,0.25)]">
+                <div className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border border-background/20 bg-foreground/80" />
+              </div>
+            </div>
+          </div>
+
+          {/* Playback controls + event counter */}
+          <div className="mt-2.5 flex items-center gap-1">
+            <button
+              className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              onClick={stepBack}
+            >
+              <SkipBack className="h-3.5 w-3.5" />
+            </button>
+            <button
+              className="flex items-center justify-center rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10"
+              onClick={() => setIsPlaying((p) => !p)}
+            >
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </button>
+            <button
+              className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              onClick={stepForward}
+            >
+              <SkipForward className="h-3.5 w-3.5" />
+            </button>
+            <span className="ml-2 truncate font-mono text-[10px] text-muted-foreground">
+              Event {currentIdx + 1}/{events.length} · {current.time}
+              {current.file ? ` · ${current.file}` : ''}
+            </span>
+          </div>
+
+          {/* Current event detail */}
+          <div className="mt-2 flex items-center gap-2.5 rounded-md border border-border/40 bg-card/60 px-3 py-2">
+            <span className={`h-2 w-2 flex-shrink-0 rounded-full ${typeColors[current.type]}`} />
+            <span className={`w-10 flex-shrink-0 font-mono text-[10px] uppercase tracking-wide ${typeTextColors[current.type]}`}>
+              {current.type}
+            </span>
+            <span className="truncate font-mono text-[11px] text-muted-foreground">{current.label}</span>
+          </div>
+
+          {/* Legend */}
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-3 font-mono text-[9px] text-muted-foreground/60">
+            {[
+              { label: 'Read',  color: 'bg-blue-500'     },
+              { label: 'Edit',  color: 'bg-orange-500'   },
+              { label: 'Bash',  color: 'bg-green-500'    },
+              { label: 'Agent', color: 'bg-violet-500'   },
+              { label: 'User',  color: 'bg-foreground/50' },
+            ].map(({ label, color }) => (
+              <span key={label} className="flex items-center gap-1">
+                <span className={`inline-block h-2 w-3 rounded-sm ${color}`} />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // SECTION DIVIDER
 // ============================================================================
 
@@ -1275,6 +1531,22 @@ export function FeatureSections() {
           'Compare original vs forked output side-by-side',
         ]}
         visual={<ForkReplayVisual />}
+      />
+
+      <SectionDivider />
+
+      <FeatureSection
+        badge="TIMELINE SCRUBBER"
+        title="Scrub Through Every Agent Decision"
+        description="Watch your agent execute like a video. Click anywhere on the timeline to jump to that moment — see exactly which files were read, what edits were made, and why the agent took each action."
+        capabilities={[
+          'Color-coded event blocks: reads, edits, bash, agent messages, user prompts',
+          'Click or drag the scrubber to jump to any point in the session',
+          'Dense clusters reveal activity bursts — sparse gaps show LLM thinking time',
+          'Step forward or backward one event at a time with full event detail',
+        ]}
+        visual={<TimelineScrubberVisual />}
+        reverse
       />
 
       <SectionDivider />
