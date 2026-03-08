@@ -238,7 +238,7 @@ export function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProps) {
               </div>
 
               {/* Step content */}
-              <div className="relative min-h-[200px]">
+              <div className="relative h-[280px]">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeStep}
@@ -246,7 +246,7 @@ export function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProps) {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.2 }}
-                    className="flex flex-col items-center text-center"
+                    className="absolute inset-0 flex flex-col items-center text-center"
                   >
                     {/* Icon */}
                     {(() => {

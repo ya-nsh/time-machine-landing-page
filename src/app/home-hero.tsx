@@ -351,7 +351,7 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
   }, [mounted]);
 
   return (
-    <div className="mt-12 w-full max-w-xl">
+    <div className="mt-12 w-full max-w-xl" style={{ width: '576px', maxWidth: '100%' }}>
       {/* Animated gradient border wrapper */}
       <div
         className="relative rounded-lg p-[1px]"
@@ -376,7 +376,7 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
           </div>
 
           {/* Terminal content */}
-          <div className="p-4 font-mono text-sm min-h-[180px]">
+          <div className="p-4 font-mono text-sm h-[196px]">
             {codeLines.map((line, index) => (
               <div
                 key={`${line.text}-${index}`}

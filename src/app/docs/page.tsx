@@ -23,6 +23,7 @@ import {
   Copy,
   Check,
   AlertTriangle,
+  CheckCircle2,
   Server,
   Workflow,
   ShieldCheck,
@@ -220,6 +221,7 @@ const NAV_SECTIONS = [
   {
     title: 'Integrations',
     items: [
+      { label: 'Claude Code', id: 'claude-code' },
       { label: 'LangChain Adapter', id: 'langchain' },
       { label: 'OpenRouter', id: 'openrouter' },
       { label: 'Utilities', id: 'utilities' },
@@ -863,6 +865,274 @@ step.getIndex();  // 0-based index in execution sequence`}</CodeBlock>
                 ['custom', 'Anything else', 'Custom logic, business rules'],
               ]}
             />
+          </section>
+
+          {/* ─── Claude Code Integration ──────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="claude-code" />
+            <h2 className="mb-2 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <Terminal className="h-6 w-6 text-primary" />
+              Claude Code Integration
+            </h2>
+            <p className="mb-8 text-sm text-muted-foreground">
+              Automatically capture every Claude Code session as a traced execution you can inspect, replay, and fork — zero code changes needed.
+            </p>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">
+              How it works
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              Claude Code exposes <strong className="text-foreground">lifecycle hooks</strong> — shell commands that fire on events like session start, tool use, prompt submission, and session end. Time Machine provides a <strong className="text-foreground">hook bridge</strong> that receives these events via stdin and records them as execution steps.
+            </p>
+            <div className="mb-8 rounded-lg border border-border/40 bg-card/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
+              <span className="text-foreground">Claude Code</span> (hook event) → <span className="text-primary">stdin JSON</span> → <span className="text-foreground">bridge script</span> → <span className="text-primary">Time Machine API</span> → <span className="text-foreground">dashboard</span>
+            </div>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">
+              Prerequisites
+            </h3>
+            <ul className="mb-8 space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span><strong className="text-foreground">Node.js</strong> &gt;= 18 or <strong className="text-foreground">Bun</strong> installed</span></li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span><strong className="text-foreground">Claude Code</strong> CLI installed (<code className="rounded bg-card px-1 py-0.5 font-mono text-xs">claude</code> command available)</span></li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span>A running <strong className="text-foreground">Time Machine</strong> instance (local dev or hosted)</span></li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span>A <strong className="text-foreground">Time Machine project</strong> with an API key (<a href="#get-api-key" className="text-primary underline underline-offset-4 hover:text-primary/80">get one here</a>)</span></li>
+            </ul>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">
+              Step 1: Install the SDK
+            </h3>
+            <CodeBlock title="terminal">{`# npm
+npm install @timemachine-sdk/sdk
+
+# bun
+bun add @timemachine-sdk/sdk
+
+# pnpm
+pnpm add @timemachine-sdk/sdk`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Step 2: Set Environment Variables
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              The bridge reads two environment variables. Add them to your shell profile (<code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.zshrc</code>, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.bashrc</code>) or export them before launching Claude Code:
+            </p>
+            <CodeBlock title="~/.zshrc">{`export TIMEMACHINE_API_KEY="tm_your-api-key-here"
+export TIMEMACHINE_BASE_URL="https://app.timemachinesdk.dev"  # or http://localhost:3000`}</CodeBlock>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Reload your shell with <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">source ~/.zshrc</code>. For debugging, set <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">TIMEMACHINE_DEBUG=1</code> to see bridge logs in stderr.
+            </p>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Step 3: Install Hooks
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              <strong className="text-foreground">Option A: Automatic (recommended)</strong> — Run the installer from your project directory:
+            </p>
+            <CodeBlock title="terminal">{`node --input-type=module -e "
+  import { installClaudeCodeHooks } from '@timemachine-sdk/sdk/claude-code-installer';
+  const result = await installClaudeCodeHooks({
+    projectDir: process.cwd(),
+    scope: 'local'
+  });
+  console.log(result);
+"`}</CodeBlock>
+            <p className="mt-4 mb-4 text-sm text-muted-foreground leading-relaxed">
+              This creates <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.claude/hooks/timemachine-bridge.mjs</code> and merges hook entries into <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.claude/settings.local.json</code> for all 11 lifecycle events.
+            </p>
+
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              <strong className="text-foreground">Option A1: Shell wrapper with .env file (recommended for local use)</strong> — If Claude Code doesn{"'"}t inherit your shell environment, use a wrapper that sources a <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.env</code> file:
+            </p>
+            <CodeBlock title=".claude/hooks/.env">{`TIMEMACHINE_API_KEY="tm_your_project_key"
+TIMEMACHINE_BASE_URL="https://app.timemachinesdk.dev"`}</CodeBlock>
+            <CodeBlock title=".claude/hooks/run-bridge.sh">{`#!/bin/bash
+set -a
+source "$(dirname "$0")/.env"
+set +a
+exec node "$(dirname "$0")/timemachine-bridge.mjs" "$@"`}</CodeBlock>
+            <p className="mt-2 mb-4 text-xs text-muted-foreground">
+              Make it executable: <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">chmod +x .claude/hooks/run-bridge.sh</code>. Then point all hooks at the wrapper in <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.claude/settings.local.json</code>.
+            </p>
+
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              <strong className="text-foreground">Option B: Manual installation</strong> — Add hook entries to <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.claude/settings.local.json</code> yourself:
+            </p>
+            <CodeBlock title=".claude/settings.local.json">{`{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /absolute/path/to/.claude/hooks/timemachine-bridge.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}`}</CodeBlock>
+            <p className="mt-2 mb-4 text-xs text-muted-foreground">
+              Repeat the same structure for all 11 events. Then create the bridge script:
+            </p>
+            <CodeBlock title=".claude/hooks/timemachine-bridge.mjs">{`import { runClaudeCodeHookBridge } from '@timemachine-sdk/sdk/claude-code-bridge';
+
+runClaudeCodeHookBridge().catch((error) => {
+  console.error('[TimeMachine][ClaudeCodeBridge]', error);
+  process.exitCode = 1;
+});`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              All 11 Hook Events
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    <th className="py-2 pr-4 text-left font-mono text-xs font-medium text-muted-foreground">Event</th>
+                    <th className="py-2 pr-4 text-left font-mono text-xs font-medium text-muted-foreground">Step Type</th>
+                    <th className="py-2 text-left font-mono text-xs font-medium text-muted-foreground">What{"'"}s Recorded</th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono text-xs">
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">SessionStart</td><td className="py-2 pr-4 text-primary">custom</td><td className="py-2 text-muted-foreground">Session ID, working directory</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">UserPromptSubmit</td><td className="py-2 pr-4 text-primary">human_input</td><td className="py-2 text-muted-foreground">The user{"'"}s prompt text</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">PostToolUse</td><td className="py-2 pr-4 text-primary">tool_use</td><td className="py-2 text-muted-foreground">Tool name, success output</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">PostToolUseFailure</td><td className="py-2 pr-4 text-primary">tool_use</td><td className="py-2 text-muted-foreground">Tool name, error details</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">Notification</td><td className="py-2 pr-4 text-primary">custom</td><td className="py-2 text-muted-foreground">Notification message</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">Stop</td><td className="py-2 pr-4 text-primary">custom</td><td className="py-2 text-muted-foreground">Stop reason</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">SubagentStart</td><td className="py-2 pr-4 text-primary">custom</td><td className="py-2 text-muted-foreground">Subagent lifecycle start</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">SubagentStop</td><td className="py-2 pr-4 text-primary">custom</td><td className="py-2 text-muted-foreground">Subagent lifecycle end</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">PreCompact</td><td className="py-2 pr-4 text-primary">custom</td><td className="py-2 text-muted-foreground">Context compaction</td></tr>
+                  <tr className="border-b border-border/20"><td className="py-2 pr-4 text-foreground">PermissionRequest</td><td className="py-2 pr-4 text-primary">custom</td><td className="py-2 text-muted-foreground">Permission decision</td></tr>
+                  <tr><td className="py-2 pr-4 text-foreground">SessionEnd</td><td className="py-2 pr-4 text-primary">custom</td><td className="py-2 text-muted-foreground">Final status, transcript ingestion</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              On <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">SessionEnd</code>, the bridge also parses Claude Code{"'"}s transcript file (JSONL) to extract assistant messages and file edits that hooks don{"'"}t capture directly.
+            </p>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Step 4: Verify the Setup
+            </h3>
+            <CodeBlock title="terminal">{`# Check hooks are configured
+cat .claude/settings.local.json | python3 -m json.tool | grep -c '"hooks"'
+
+# Check environment variables
+echo $TIMEMACHINE_API_KEY    # should start with tm_
+echo $TIMEMACHINE_BASE_URL   # should be your server URL
+
+# Test the API key
+curl -s -H "Authorization: Bearer $TIMEMACHINE_API_KEY" \\
+  $TIMEMACHINE_BASE_URL/api/v1/executions | head -c 200
+
+# Run a session — then check your dashboard
+claude`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Architecture
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              Each hook invocation is a <strong className="text-foreground">separate short-lived process</strong>. The bridge uses a file-based state store at <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.timemachine/claude-code/</code> to correlate events across invocations:
+            </p>
+            <div className="mb-4 rounded-lg border border-border/40 bg-card/30 p-4 font-mono text-xs leading-loose text-muted-foreground">
+              <div>1. Claude Code fires hook event → passes JSON to stdin</div>
+              <div>2. Bridge reads stdin, normalizes the event payload</div>
+              <div>3. Checks <span className="text-primary">~/.timemachine/claude-code/&lt;session&gt;.json</span> for existing execution</div>
+              <div className="pl-4">• No state → creates new execution via API</div>
+              <div className="pl-4">• State exists → resumes execution</div>
+              <div>4. Converts event to Time Machine step and records it</div>
+              <div>5. On <span className="text-foreground">SessionEnd</span>: parses transcript, appends derived steps, marks complete</div>
+            </div>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              File Layout
+            </h3>
+            <CodeBlock title="project structure">{`.claude/settings.local.json    # Hook configuration (11 events)
+.claude/hooks/.env             # API key + base URL (gitignored)
+.claude/hooks/run-bridge.sh    # Shell wrapper — sources .env, runs node
+.claude/hooks/timemachine-bridge.mjs  # Entrypoint — imports SDK bridge
+
+~/.timemachine/claude-code/    # Session state (auto-cleaned on SessionEnd)
+  <session-id>.json            # Maps session → executionId`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Dashboard Features
+            </h3>
+            <ul className="mb-4 space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span><strong className="text-foreground">Filter by source</strong> — Use the &ldquo;Claude Code&rdquo; filter on the executions list</span></li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span><strong className="text-foreground">Step timeline</strong> — See every prompt, tool call, and response in order</span></li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span><strong className="text-foreground">Inspect step details</strong> — Click any step to see full input/output JSON</span></li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span><strong className="text-foreground">Session replay</strong> — Scrub through the timeline to replay what happened</span></li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /><span><strong className="text-foreground">Fork from any step</strong> — Right-click a step to fork the execution from that point</span></li>
+            </ul>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Security Best Practices
+            </h3>
+            <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 text-sm text-muted-foreground">
+              <div className="mb-2 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <span className="font-mono text-xs font-semibold text-warning">Important</span>
+              </div>
+              <ul className="space-y-1.5 text-xs leading-relaxed">
+                <li>• Keep <code className="rounded bg-card px-1 py-0.5 font-mono">.claude/settings.local.json</code> uncommitted</li>
+                <li>• Store <code className="rounded bg-card px-1 py-0.5 font-mono">TIMEMACHINE_API_KEY</code> in your shell profile, direnv, or a secret manager</li>
+                <li>• Add <code className="rounded bg-card px-1 py-0.5 font-mono">.claude/hooks/.env</code> to your <code className="rounded bg-card px-1 py-0.5 font-mono">.gitignore</code></li>
+                <li>• Never commit a live <code className="rounded bg-card px-1 py-0.5 font-mono">tm_...</code> key in repo-controlled JSON</li>
+                <li>• Rotate the key immediately if it was committed or shared in screenshots</li>
+              </ul>
+            </div>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Troubleshooting
+            </h3>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border/40 bg-card/30 p-4">
+                <h4 className="mb-1 font-mono text-sm font-semibold text-foreground">Hooks aren{"'"}t firing</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Make sure <code className="rounded bg-card px-1 py-0.5 font-mono">.claude/settings.local.json</code> is valid JSON. Verify the command path is absolute and the file exists. Check that <code className="rounded bg-card px-1 py-0.5 font-mono">node</code> or <code className="rounded bg-card px-1 py-0.5 font-mono">bun</code> is in your PATH.
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/40 bg-card/30 p-4">
+                <h4 className="mb-1 font-mono text-sm font-semibold text-foreground">&ldquo;TIMEMACHINE_API_KEY is required&rdquo; error</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Export the variable in the same shell where you run <code className="rounded bg-card px-1 py-0.5 font-mono">claude</code>. If using a new tab, make sure it{"'"}s in your shell profile. As a fallback, use the shell wrapper approach with a <code className="rounded bg-card px-1 py-0.5 font-mono">.env</code> file.
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/40 bg-card/30 p-4">
+                <h4 className="mb-1 font-mono text-sm font-semibold text-foreground">Execution appears but has no steps</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Set <code className="rounded bg-card px-1 py-0.5 font-mono">TIMEMACHINE_DEBUG=1</code> to see bridge logs. Test the bridge manually: <code className="rounded bg-card px-1 py-0.5 font-mono">{"echo '{\"session_id\":\"test\",\"hook_event_name\":\"SessionStart\"}' | node .claude/hooks/timemachine-bridge.mjs"}</code>
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/40 bg-card/30 p-4">
+                <h4 className="mb-1 font-mono text-sm font-semibold text-foreground">Bridge state is stale</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  If a session ended abnormally, clean up: <code className="rounded bg-card px-1 py-0.5 font-mono">rm ~/.timemachine/claude-code/*.json</code>
+                </p>
+              </div>
+            </div>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Quick Reference
+            </h3>
+            <CodeBlock title="terminal">{`# Install SDK
+bun add @timemachine-sdk/sdk
+
+# Set env vars
+export TIMEMACHINE_API_KEY="tm_..."
+export TIMEMACHINE_BASE_URL="https://app.timemachinesdk.dev"
+
+# Install hooks (automatic)
+node --input-type=module -e "
+  import { installClaudeCodeHooks } from '@timemachine-sdk/sdk/claude-code-installer';
+  await installClaudeCodeHooks({ projectDir: process.cwd(), scope: 'local' });
+"
+
+# Verify — run a session, check dashboard
+claude`}</CodeBlock>
           </section>
 
           {/* ─── LangChain Adapter ─────────────────────────── */}

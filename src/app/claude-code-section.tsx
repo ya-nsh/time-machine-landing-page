@@ -32,18 +32,27 @@ function AnimatedTerminal({ inView }: { inView: boolean }) {
   const [visibleLines, setVisibleLines] = useState<number>(0);
   const [typedText, setTypedText] = useState('');
   const [isTypingCommand, setIsTypingCommand] = useState(false);
+  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
   const hasStarted = useRef(false);
 
-  useEffect(() => {
-    if (!inView || hasStarted.current) return;
-    hasStarted.current = true;
+  const runAnimation = () => {
+    setVisibleLines(0);
+    setTypedText('');
+    setIsComplete(false);
+    hasStarted.current = false;
+    // Trigger re-run
+    setTimeout(() => {
+      hasStarted.current = true;
+      startTyping();
+    }, 100);
+  };
 
+  const startTyping = () => {
     let cancelled = false;
-
     const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
     const run = async () => {
-      // Type first command character by character
       const cmd = terminalLines[0].text;
       setIsTypingCommand(true);
       for (let i = 0; i <= cmd.length; i++) {
@@ -55,22 +64,26 @@ function AnimatedTerminal({ inView }: { inView: boolean }) {
       setVisibleLines(1);
       await sleep(600);
 
-      // Reveal remaining lines with delays
       for (let i = 1; i < terminalLines.length; i++) {
         if (cancelled) return;
         await sleep(terminalLines[i].delay);
         setVisibleLines(i + 1);
       }
+      setIsComplete(true);
     };
 
     run();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
+  };
+
+  useEffect(() => {
+    if (!inView || hasStarted.current) return;
+    hasStarted.current = true;
+    return startTyping();
   }, [inView]);
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto">
+    <div className="relative mx-auto" style={{ width: '672px', maxWidth: '100%' }}>
       {/* Glow behind terminal */}
       <div className="absolute -inset-4 rounded-2xl bg-primary/5 blur-2xl" />
 
@@ -85,18 +98,34 @@ function AnimatedTerminal({ inView }: { inView: boolean }) {
         <div className="rounded-xl bg-card/95 backdrop-blur-sm shadow-2xl overflow-hidden">
           {/* Terminal header */}
           <div className="flex items-center gap-2 border-b border-border/50 bg-card px-4 py-3">
-            <div className="h-3 w-3 rounded-full bg-red-500/70" />
-            <div className="h-3 w-3 rounded-full bg-yellow-500/70" />
-            <div className="h-3 w-3 rounded-full bg-green-500/70" />
+            <div className="h-3 w-3 rounded-full bg-red-500/70 cursor-pointer transition-all hover:bg-red-500" />
+            <div className="h-3 w-3 rounded-full bg-yellow-500/70 cursor-pointer transition-all hover:bg-yellow-500" />
+            <div className="h-3 w-3 rounded-full bg-green-500/70 cursor-pointer transition-all hover:bg-green-500" />
             <span className="ml-4 font-mono text-xs text-muted-foreground">~/my-project</span>
-            <div className="ml-auto flex items-center gap-1 text-muted-foreground/50">
-              <Terminal className="h-3 w-3" />
-              <span className="font-mono text-[10px]">zsh</span>
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="font-mono text-[10px] text-green-500/70">claude code</span>
+              </div>
+              {isComplete && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  onClick={runAnimation}
+                  className="flex items-center gap-1 rounded-md border border-border/40 bg-card/80 px-2 py-0.5 font-mono text-[10px] text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
+                  title="Replay animation"
+                >
+                  <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  replay
+                </motion.button>
+              )}
             </div>
           </div>
 
           {/* Terminal body */}
-          <div className="p-5 font-mono text-sm leading-relaxed min-h-[280px]">
+          <div className="p-5 font-mono text-sm leading-relaxed h-[300px]">
             {/* Typing command */}
             {visibleLines === 0 && (
               <div>
@@ -125,15 +154,24 @@ function AnimatedTerminal({ inView }: { inView: boolean }) {
                 colorClass = 'text-primary/80';
               }
 
+              const isHovered = hoveredLine === lineIndex;
+
               return (
                 <motion.div
                   key={lineIndex}
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.2 }}
-                  className={colorClass}
+                  className={`${colorClass} cursor-default rounded-sm px-1 -mx-1 transition-colors ${isHovered ? 'bg-primary/5' : ''}`}
+                  onMouseEnter={() => setHoveredLine(lineIndex)}
+                  onMouseLeave={() => setHoveredLine(null)}
                 >
                   {line.text}
+                  {isHovered && line.type === 'hook' && (
+                    <span className="ml-2 text-[10px] text-muted-foreground/60">
+                      lifecycle hook
+                    </span>
+                  )}
                 </motion.div>
               );
             })}
