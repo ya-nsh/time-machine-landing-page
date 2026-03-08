@@ -125,7 +125,7 @@ function AnimatedTerminal({ inView }: { inView: boolean }) {
           </div>
 
           {/* Terminal body */}
-          <div className="p-5 font-mono text-sm leading-relaxed h-[300px]">
+          <div className="p-3 sm:p-5 font-mono text-xs sm:text-sm leading-relaxed h-[280px] sm:h-[300px]">
             {/* Typing command */}
             {visibleLines === 0 && (
               <div>
@@ -204,7 +204,7 @@ const archSteps = [
 
 function ArchitectureDiagram({ inView }: { inView: boolean }) {
   return (
-    <div className="mt-16 flex flex-wrap items-center justify-center gap-2 sm:gap-0">
+    <div className="mt-16 grid grid-cols-2 gap-4 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-0">
       {archSteps.map((step, i) => {
         const Icon = step.icon;
         return (
@@ -225,13 +225,13 @@ function ArchitectureDiagram({ inView }: { inView: boolean }) {
               </div>
             </motion.div>
 
-            {/* Arrow connector */}
+            {/* Arrow connector — desktop only */}
             {i < archSteps.length - 1 && (
               <motion.div
                 initial={{ opacity: 0, scaleX: 0 }}
                 animate={inView ? { opacity: 1, scaleX: 1 } : {}}
                 transition={{ duration: 0.4, delay: 1.0 + i * 0.2 }}
-                className="mx-1 sm:mx-3 flex items-center origin-left"
+                className="mx-1 hidden items-center origin-left sm:mx-3 sm:flex"
               >
                 <div className="h-[1px] w-4 sm:w-8 bg-gradient-to-r from-primary/60 to-primary/20" />
                 <ArrowRight className="h-3.5 w-3.5 -ml-1 text-primary/50" />
@@ -306,7 +306,7 @@ export function ClaudeCodeSection() {
   const isInView = useInView(sectionRef, { once: true, margin: '-80px' });
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden bg-background py-28 sm:py-36">
+    <section ref={sectionRef} className="relative overflow-hidden bg-background py-16 sm:py-28 md:py-36">
       {/* Background accents */}
       <div className="pointer-events-none absolute inset-0">
         <div
@@ -340,7 +340,7 @@ export function ClaudeCodeSection() {
         </div>
 
         {/* Title */}
-        <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+        <h2 className="mb-4 text-center text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl">
           Every Claude Code Session.{' '}
           <span className="bg-gradient-to-r from-primary via-orange-400 to-primary bg-[length:200%_auto] bg-clip-text text-transparent animate-text-shimmer">
             Automatically Captured.

@@ -264,7 +264,7 @@ export function HowItWorks() {
   const isInView = useInView(sectionRef, { once: true, margin: '-100px' });
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden bg-background py-24 sm:py-32">
+    <section ref={sectionRef} className="relative overflow-hidden bg-background py-16 sm:py-24 md:py-32">
       {/* Subtle background grid */}
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(hsl(var(--primary)/0.02)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--primary)/0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
 

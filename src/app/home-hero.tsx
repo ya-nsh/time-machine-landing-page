@@ -198,7 +198,7 @@ function HeroHeading() {
   return (
     <h1 className="mb-4 text-center">
       <span
-        className="relative block text-5xl font-bold tracking-tight text-foreground md:text-6xl lg:text-7xl cursor-default"
+        className="relative block text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl cursor-default"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{
@@ -224,7 +224,7 @@ function HeroHeading() {
           </>
         )}
       </span>
-      <span className="mt-2 block bg-gradient-to-r from-primary via-orange-400 to-primary bg-[length:200%_auto] bg-clip-text text-xl font-medium text-transparent md:text-2xl animate-text-shimmer">
+      <span className="mt-2 block bg-gradient-to-r from-primary via-orange-400 to-primary bg-[length:200%_auto] bg-clip-text text-lg font-medium text-transparent sm:text-xl md:text-2xl animate-text-shimmer">
         Debug the past. Fork the future.
       </span>
     </h1>
@@ -251,38 +251,38 @@ function HeroSubtitle() {
 function HeroActions({ onHowItWorks }: { onHowItWorks: () => void }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-      <Link href="/docs">
-        <Button size="lg" className="group relative overflow-hidden px-8">
+      <Button size="lg" className="group relative overflow-hidden px-8" asChild>
+        <Link href="/docs">
           <span className="relative z-10 flex items-center gap-2">
             Get Started
             <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </span>
-        </Button>
-      </Link>
-      <button onClick={onHowItWorks}>
-        <Button
-          size="lg"
-          variant="outline"
-          className="group px-8 border-border/40 hover:border-primary/50"
-        >
-          <span className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary transition-transform group-hover:rotate-12" />
-            How It Works
-          </span>
-        </Button>
-      </button>
-      <a href={`${DASHBOARD_URL}/sign-up`} target="_blank" rel="noopener noreferrer">
-        <Button
-          size="lg"
-          variant="outline"
-          className="group px-8 border-border/40 hover:border-primary/50"
-        >
+        </Link>
+      </Button>
+      <Button
+        size="lg"
+        variant="outline"
+        className="group px-8 border-border/40 hover:border-primary/50"
+        onClick={onHowItWorks}
+      >
+        <span className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary transition-transform group-hover:rotate-12" />
+          How It Works
+        </span>
+      </Button>
+      <Button
+        size="lg"
+        variant="outline"
+        className="group px-8 border-border/40 hover:border-primary/50"
+        asChild
+      >
+        <a href={`${DASHBOARD_URL}/sign-up`} target="_blank" rel="noopener noreferrer">
           <span className="flex items-center gap-2">
             Sign Up
             <ExternalLink className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
           </span>
-        </Button>
-      </a>
+        </a>
+      </Button>
     </div>
   );
 }
@@ -364,19 +364,19 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
       >
         <div className="overflow-hidden rounded-lg bg-card/95 shadow-2xl backdrop-blur-sm">
           {/* Terminal header */}
-          <div className="flex items-center gap-2 border-b border-border/50 bg-card px-4 py-3">
-            <div className="h-3 w-3 rounded-full bg-red-500/70 transition-all hover:bg-red-500" />
-            <div className="h-3 w-3 rounded-full bg-yellow-500/70 transition-all hover:bg-yellow-500" />
-            <div className="h-3 w-3 rounded-full bg-green-500/70 transition-all hover:bg-green-500" />
-            <span className="ml-4 font-mono text-xs text-muted-foreground">~/my-project</span>
-            <div className="ml-auto flex items-center gap-1">
+          <div className="flex items-center gap-1.5 border-b border-border/50 bg-card px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-500/70 sm:h-3 sm:w-3" />
+            <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70 sm:h-3 sm:w-3" />
+            <div className="h-2.5 w-2.5 rounded-full bg-green-500/70 sm:h-3 sm:w-3" />
+            <span className="ml-2 truncate font-mono text-[10px] text-muted-foreground sm:ml-4 sm:text-xs">~/my-project</span>
+            <div className="ml-auto flex shrink-0 items-center gap-1">
               <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
               <span className="font-mono text-[10px] text-green-500/70">claude code</span>
             </div>
           </div>
 
           {/* Terminal content */}
-          <div className="p-4 font-mono text-sm h-[196px]">
+          <div className="p-3 sm:p-4 font-mono text-xs sm:text-sm h-[196px]">
             {codeLines.map((line, index) => (
               <div
                 key={`${line.text}-${index}`}
@@ -438,11 +438,11 @@ function FeaturePills() {
   ];
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3 px-6 pb-8">
+    <div className="flex items-center gap-3 overflow-x-auto px-6 pb-8 sm:flex-wrap sm:justify-center sm:overflow-x-visible scrollbar-none">
       {features.map(({ icon: Icon, label, highlight }) => (
         <div
           key={label}
-          className={`group flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/5 ${
+          className={`group flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/5 ${
             highlight
               ? 'border-primary/40 bg-primary/10 shadow-sm shadow-primary/10'
               : 'border-border/30 bg-card/30'

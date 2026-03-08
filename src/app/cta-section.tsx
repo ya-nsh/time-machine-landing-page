@@ -86,7 +86,7 @@ export function CTASection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl"
+              className="mb-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl"
             >
               Ready to Debug Smarter?
             </motion.h2>
@@ -108,26 +108,27 @@ export function CTASection() {
               transition={{ duration: 0.5, delay: 0.35 }}
               className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
             >
-              <Link href="/docs">
-                <Button size="lg" className="group relative overflow-hidden px-8">
+              <Button size="lg" className="group relative overflow-hidden px-8" asChild>
+                <Link href="/docs">
                   <span className="relative z-10 flex items-center gap-2">
                     Get Started
                     <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
-                </Button>
-              </Link>
-              <a href={`${DASHBOARD_URL}/sign-up`} target="_blank" rel="noopener noreferrer">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="group border-border/40 px-8 hover:border-primary/50"
-                >
+                </Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="group border-border/40 px-8 hover:border-primary/50"
+                asChild
+              >
+                <a href={`${DASHBOARD_URL}/sign-up`} target="_blank" rel="noopener noreferrer">
                   <span className="flex items-center gap-2">
                     Sign Up
                     <ExternalLink className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
                   </span>
-                </Button>
-              </a>
+                </a>
+              </Button>
             </motion.div>
           </div>
         </motion.div>

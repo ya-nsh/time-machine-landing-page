@@ -180,7 +180,7 @@ export function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProps) {
               <X className="h-5 w-5" />
             </button>
 
-            <div className="px-8 pb-8 pt-8">
+            <div className="px-4 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8">
               {/* Header */}
               <h2 className="mb-1 text-center text-xl font-semibold text-foreground">
                 How It Works
@@ -222,7 +222,7 @@ export function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProps) {
 
                     {/* Connecting line */}
                     {index < steps.length - 1 && (
-                      <div className="mx-4 mb-5 h-[2px] w-12 rounded-full bg-border">
+                      <div className="mx-2 mb-5 h-[2px] w-8 rounded-full bg-border sm:mx-4 sm:w-12">
                         <motion.div
                           className="h-full rounded-full bg-primary"
                           initial={false}
@@ -238,7 +238,7 @@ export function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProps) {
               </div>
 
               {/* Step content */}
-              <div className="relative h-[280px]">
+              <div className="relative h-[300px] sm:h-[280px]">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeStep}
@@ -264,7 +264,7 @@ export function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProps) {
                     </h3>
 
                     {/* Description */}
-                    <p className="mb-6 max-w-md text-sm leading-relaxed text-muted-foreground">
+                    <p className="mb-6 max-w-md text-xs leading-relaxed text-muted-foreground sm:text-sm">
                       {steps[activeStep].description}
                     </p>
 
