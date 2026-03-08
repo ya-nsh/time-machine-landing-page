@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import {
   GitBranch,
   Layers,
@@ -14,13 +13,11 @@ import {
   Pause,
   SkipBack,
   SkipForward,
-  ArrowRight,
   Zap,
   Activity,
   AlertTriangle,
   BarChart3,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 // Hook to detect when element enters viewport
 function useInView(options?: IntersectionObserverInit) {
@@ -43,7 +40,7 @@ function useInView(options?: IntersectionObserverInit) {
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [options?.threshold, options?.root, options?.rootMargin]);
 
   return { ref, isInView };
 }
@@ -99,8 +96,8 @@ function FeatureSection({
             </h2>
             <p className="mb-8 text-lg leading-relaxed text-muted-foreground">{description}</p>
             <div className="flex flex-col gap-4">
-              {capabilities.map((cap, i) => (
-                <Capability key={i}>{cap}</Capability>
+              {capabilities.map((cap) => (
+                <Capability key={cap}>{cap}</Capability>
               ))}
             </div>
           </div>
@@ -142,25 +139,55 @@ function StepIcon({ type, className }: { type: string; className?: string }) {
   }
 }
 
+const ORIGINAL_STEPS = [
+  { id: 1, type: 'llm', label: 'LLM Call', detail: 'gpt-4o', meta: '1,234 tok', cost: 0.02 },
+  { id: 2, type: 'tool', label: 'Tool: search_db', detail: 'query users', meta: '45ms', cost: 0.0 },
+  {
+    id: 3,
+    type: 'decision',
+    label: 'Route Decision',
+    detail: 'confidence: 0.72',
+    meta: 'fork point',
+    cost: 0.01,
+  },
+  {
+    id: 4,
+    type: 'llm',
+    label: 'LLM Call',
+    detail: 'generate response',
+    meta: '892 tok',
+    cost: 0.015,
+  },
+  {
+    id: 5,
+    type: 'output',
+    label: 'Final Output',
+    detail: 'sent to user',
+    meta: '$0.03',
+    cost: 0.005,
+  },
+] as const;
+
+const FORKED_STEPS = [
+  {
+    id: 'f3',
+    type: 'decision',
+    label: 'Route Decision',
+    detail: 'confidence: 0.95',
+    meta: 'modified',
+  },
+  { id: 'f4', type: 'llm', label: 'LLM Call', detail: 'new prompt', meta: '1,102 tok' },
+  { id: 'f5', type: 'output', label: 'New Output', detail: 'improved result', meta: '$0.02' },
+] as const;
+
 function ForkReplayVisual() {
   const [phase, setPhase] = useState<'building' | 'forking' | 'replaying' | 'done'>('building');
   const [visibleSteps, setVisibleSteps] = useState(0);
   const [replayProgress, setReplayProgress] = useState(0);
   const { ref, isInView } = useInView();
 
-  const originalSteps = [
-    { id: 1, type: 'llm', label: 'LLM Call', detail: 'gpt-4o', meta: '1,234 tok', cost: 0.02 },
-    { id: 2, type: 'tool', label: 'Tool: search_db', detail: 'query users', meta: '45ms', cost: 0.00 },
-    { id: 3, type: 'decision', label: 'Route Decision', detail: 'confidence: 0.72', meta: 'fork point', cost: 0.01 },
-    { id: 4, type: 'llm', label: 'LLM Call', detail: 'generate response', meta: '892 tok', cost: 0.015 },
-    { id: 5, type: 'output', label: 'Final Output', detail: 'sent to user', meta: '$0.03', cost: 0.005 },
-  ];
-
-  const forkedSteps = [
-    { id: 'f3', type: 'decision', label: 'Route Decision', detail: 'confidence: 0.95', meta: 'modified' },
-    { id: 'f4', type: 'llm', label: 'LLM Call', detail: 'new prompt', meta: '1,102 tok' },
-    { id: 'f5', type: 'output', label: 'New Output', detail: 'improved result', meta: '$0.02' },
-  ];
+  const originalSteps = ORIGINAL_STEPS;
+  const forkedSteps = FORKED_STEPS;
 
   useEffect(() => {
     if (!isInView) return;
@@ -172,13 +199,20 @@ function ForkReplayVisual() {
 
     stepTimers.push(setTimeout(() => setPhase('forking'), originalSteps.length * 200 + 400));
 
-    stepTimers.push(setTimeout(() => {
-      setPhase('replaying');
-      setReplayProgress(0);
-    }, originalSteps.length * 200 + 1000));
+    stepTimers.push(
+      setTimeout(
+        () => {
+          setPhase('replaying');
+          setReplayProgress(0);
+        },
+        originalSteps.length * 200 + 1000
+      )
+    );
 
     for (let i = 1; i <= 3; i++) {
-      stepTimers.push(setTimeout(() => setReplayProgress(i), originalSteps.length * 200 + 1000 + i * 500));
+      stepTimers.push(
+        setTimeout(() => setReplayProgress(i), originalSteps.length * 200 + 1000 + i * 500)
+      );
     }
 
     stepTimers.push(setTimeout(() => setPhase('done'), originalSteps.length * 200 + 3000));
@@ -232,7 +266,7 @@ function ForkReplayVisual() {
                 return (
                   <div
                     key={step.id}
-                    className={`relative flex items-center gap-2.5 rounded-md border px-2.5 py-2 transition-all duration-400 ${
+                    className={`relative flex items-center gap-2.5 rounded-md border px-2.5 py-2 transition-all duration-300 ${
                       isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
                     } ${
                       isForkPoint
@@ -275,20 +309,38 @@ function ForkReplayVisual() {
                       <div className="flex items-center justify-between gap-1">
                         <span
                           className={`truncate font-mono text-[11px] ${
-                            isReused ? 'text-green-400' : isForkPoint ? 'text-primary' : isDimmed ? 'text-muted-foreground/40' : 'text-foreground'
+                            isReused
+                              ? 'text-green-400'
+                              : isForkPoint
+                                ? 'text-primary'
+                                : isDimmed
+                                  ? 'text-muted-foreground/40'
+                                  : 'text-foreground'
                           }`}
                         >
                           {step.label}
                         </span>
-                        <span className={`flex-shrink-0 font-mono text-[9px] ${
-                          isReused ? 'text-green-400/60' : isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'
-                        }`}>
+                        <span
+                          className={`flex-shrink-0 font-mono text-[9px] ${
+                            isReused
+                              ? 'text-green-400/60'
+                              : isDimmed
+                                ? 'text-muted-foreground/30'
+                                : 'text-muted-foreground/60'
+                          }`}
+                        >
                           {isReused ? 'reused' : step.meta}
                         </span>
                       </div>
-                      <span className={`font-mono text-[9px] ${
-                        isReused ? 'text-green-400/50' : isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'
-                      }`}>
+                      <span
+                        className={`font-mono text-[9px] ${
+                          isReused
+                            ? 'text-green-400/50'
+                            : isDimmed
+                              ? 'text-muted-foreground/30'
+                              : 'text-muted-foreground/60'
+                        }`}
+                      >
                         {isReused ? 'not re-executed' : step.detail}
                       </span>
                     </div>
@@ -307,14 +359,22 @@ function ForkReplayVisual() {
 
             {/* Forked execution column */}
             <div className="space-y-1.5">
-              <div className={`mb-2 font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${forkActive ? 'text-primary/60' : 'text-transparent'}`}>
+              <div
+                className={`mb-2 font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${forkActive ? 'text-primary/60' : 'text-transparent'}`}
+              >
                 Forked
               </div>
 
               {/* Reused steps indicator */}
-              <div className={`flex items-center gap-2.5 rounded-md border border-dashed px-2.5 py-2 transition-all duration-400 ${forkActive ? 'border-green-500/20 bg-green-500/5 opacity-100' : 'border-transparent opacity-0'}`}>
-                <CheckCircle2 className={`h-3.5 w-3.5 transition-colors ${forkActive ? 'text-green-400/60' : 'text-transparent'}`} />
-                <span className="font-mono text-[10px] text-green-400/50">steps 1-2 reused instantly</span>
+              <div
+                className={`flex items-center gap-2.5 rounded-md border border-dashed px-2.5 py-2 transition-all duration-300 ${forkActive ? 'border-green-500/20 bg-green-500/5 opacity-100' : 'border-transparent opacity-0'}`}
+              >
+                <CheckCircle2
+                  className={`h-3.5 w-3.5 transition-colors ${forkActive ? 'text-green-400/60' : 'text-transparent'}`}
+                />
+                <span className="font-mono text-[10px] text-green-400/50">
+                  steps 1-2 reused instantly
+                </span>
               </div>
 
               {/* Forked steps */}
@@ -324,7 +384,7 @@ function ForkReplayVisual() {
                 return (
                   <div
                     key={step.id}
-                    className={`relative flex items-center gap-2.5 rounded-md border px-2.5 py-2 transition-all duration-400 ${
+                    className={`relative flex items-center gap-2.5 rounded-md border px-2.5 py-2 transition-all duration-300 ${
                       isVisible
                         ? 'border-primary/40 bg-primary/5 opacity-100 translate-x-0'
                         : 'border-transparent bg-transparent opacity-0 translate-x-3'
@@ -348,13 +408,14 @@ function ForkReplayVisual() {
                           {step.meta}
                         </span>
                       </div>
-                      <span className="font-mono text-[9px] text-primary/50">
-                        {step.detail}
-                      </span>
+                      <span className="font-mono text-[9px] text-primary/50">{step.detail}</span>
                     </div>
 
                     {phase === 'replaying' && replayProgress === i + 1 && (
-                      <div className="absolute inset-0 rounded-md border border-primary/50" style={{ animation: 'glow-pulse 1s ease-in-out infinite' }} />
+                      <div
+                        className="absolute inset-0 rounded-md border border-primary/50"
+                        style={{ animation: 'glow-pulse 1s ease-in-out infinite' }}
+                      />
                     )}
                   </div>
                 );
@@ -363,10 +424,14 @@ function ForkReplayVisual() {
           </div>
 
           {/* Replay progress bar */}
-          <div className={`mt-4 transition-all duration-500 ${phase === 'replaying' || phase === 'done' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <div
+            className={`mt-4 transition-all duration-500 ${phase === 'replaying' || phase === 'done' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+          >
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-mono text-[10px] text-muted-foreground">
-                {phase === 'done' ? 'Replay complete — only 3 of 5 steps re-executed' : 'Replaying from step 3 (skipping steps 1-2)...'}
+                {phase === 'done'
+                  ? 'Replay complete — only 3 of 5 steps re-executed'
+                  : 'Replaying from step 3 (skipping steps 1-2)...'}
               </span>
               <span className="font-mono text-[10px] text-primary">
                 {Math.min(replayProgress, 3)}/3 steps
@@ -381,11 +446,13 @@ function ForkReplayVisual() {
           </div>
 
           {/* Cost savings callout */}
-          <div className={`mt-3 flex items-center justify-between rounded-md border px-3 py-2 transition-all duration-500 ${
-            phase === 'done'
-              ? 'border-green-500/20 bg-green-500/5 opacity-100 translate-y-0'
-              : 'border-transparent bg-transparent opacity-0 translate-y-2'
-          }`}>
+          <div
+            className={`mt-3 flex items-center justify-between rounded-md border px-3 py-2 transition-all duration-500 ${
+              phase === 'done'
+                ? 'border-green-500/20 bg-green-500/5 opacity-100 translate-y-0'
+                : 'border-transparent bg-transparent opacity-0 translate-y-2'
+            }`}
+          >
             <span className="font-mono text-[10px] text-green-400">
               2 steps skipped &middot; 40% faster
             </span>
@@ -474,7 +541,15 @@ function StepTrackingVisual() {
                     : 'border-border/50 bg-card/50 hover:border-border'
                 } ${isInView ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
                 style={{ transitionDelay: `${i * 150}ms` }}
+                role="button"
+                tabIndex={0}
                 onClick={() => setExpandedStep(expandedStep === step.id ? null : step.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setExpandedStep(expandedStep === step.id ? null : step.id);
+                  }
+                }}
               >
                 {/* Step header */}
                 <div className="flex cursor-pointer items-center justify-between p-3">
@@ -562,12 +637,60 @@ function ExecutionTimelineVisual() {
   const [hoveredStep, setHoveredStep] = useState<number | null>(null);
 
   const timelineSteps = [
-    { id: 1, label: 'LLM: Analyze', type: 'llm', start: 0, duration: 45, tokens: '1,234', color: 'bg-blue-500' },
-    { id: 2, label: 'Tool: search_db', type: 'tool', start: 45, duration: 12, tokens: '—', color: 'bg-green-500' },
-    { id: 3, label: 'Tool: fetch_api', type: 'tool', start: 45, duration: 28, tokens: '—', color: 'bg-green-500' },
-    { id: 4, label: 'LLM: Synthesize', type: 'llm', start: 73, duration: 62, tokens: '2,891', color: 'bg-blue-500' },
-    { id: 5, label: 'Decision: Route', type: 'decision', start: 135, duration: 8, tokens: '—', color: 'bg-yellow-500' },
-    { id: 6, label: 'LLM: Generate', type: 'llm', start: 143, duration: 55, tokens: '1,567', color: 'bg-blue-500' },
+    {
+      id: 1,
+      label: 'LLM: Analyze',
+      type: 'llm',
+      start: 0,
+      duration: 45,
+      tokens: '1,234',
+      color: 'bg-blue-500',
+    },
+    {
+      id: 2,
+      label: 'Tool: search_db',
+      type: 'tool',
+      start: 45,
+      duration: 12,
+      tokens: '—',
+      color: 'bg-green-500',
+    },
+    {
+      id: 3,
+      label: 'Tool: fetch_api',
+      type: 'tool',
+      start: 45,
+      duration: 28,
+      tokens: '—',
+      color: 'bg-green-500',
+    },
+    {
+      id: 4,
+      label: 'LLM: Synthesize',
+      type: 'llm',
+      start: 73,
+      duration: 62,
+      tokens: '2,891',
+      color: 'bg-blue-500',
+    },
+    {
+      id: 5,
+      label: 'Decision: Route',
+      type: 'decision',
+      start: 135,
+      duration: 8,
+      tokens: '—',
+      color: 'bg-yellow-500',
+    },
+    {
+      id: 6,
+      label: 'LLM: Generate',
+      type: 'llm',
+      start: 143,
+      duration: 55,
+      tokens: '1,567',
+      color: 'bg-blue-500',
+    },
   ];
 
   const totalDuration = 200;
@@ -612,7 +735,10 @@ function ExecutionTimelineVisual() {
               <div
                 key={tick}
                 className="font-mono text-[9px] text-muted-foreground/50"
-                style={{ position: 'absolute', left: `calc(100px + ${(tick / totalDuration) * (100 - 25)}%)` }}
+                style={{
+                  position: 'absolute',
+                  left: `calc(100px + ${(tick / totalDuration) * (100 - 25)}%)`,
+                }}
               >
                 {tick}ms
               </div>
@@ -643,14 +769,28 @@ function ExecutionTimelineVisual() {
                     isInView ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
                   }`}
                   style={{ transitionDelay: `${i * 100}ms` }}
+                  role="button"
+                  tabIndex={0}
                   onMouseEnter={() => setHoveredStep(step.id)}
                   onMouseLeave={() => setHoveredStep(null)}
                   onClick={() => setSelectedStep(step.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedStep(step.id);
+                    }
+                  }}
                 >
                   {/* Label */}
-                  <div className={`w-[100px] flex-shrink-0 truncate pr-2 font-mono text-[10px] transition-colors ${
-                    isSelected ? 'text-primary' : isHovered ? 'text-foreground' : 'text-muted-foreground/70'
-                  }`}>
+                  <div
+                    className={`w-[100px] flex-shrink-0 truncate pr-2 font-mono text-[10px] transition-colors ${
+                      isSelected
+                        ? 'text-primary'
+                        : isHovered
+                          ? 'text-foreground'
+                          : 'text-muted-foreground/70'
+                    }`}
+                  >
                     {step.label}
                   </div>
 
@@ -658,7 +798,11 @@ function ExecutionTimelineVisual() {
                   <div className="relative h-6 flex-1">
                     <div
                       className={`absolute top-0.5 h-5 rounded-sm transition-all duration-300 ${step.color} ${
-                        isSelected ? 'opacity-90 ring-1 ring-primary ring-offset-1 ring-offset-card' : isHovered ? 'opacity-70' : 'opacity-50'
+                        isSelected
+                          ? 'opacity-90 ring-1 ring-primary ring-offset-1 ring-offset-card'
+                          : isHovered
+                            ? 'opacity-70'
+                            : 'opacity-50'
                       }`}
                       style={{
                         left: `${(step.start / totalDuration) * 100}%`,
@@ -678,7 +822,10 @@ function ExecutionTimelineVisual() {
                     {isHovered && (
                       <div
                         className="absolute -top-8 z-10 rounded bg-card border border-border/50 px-2 py-1 font-mono text-[9px] text-foreground shadow-lg whitespace-nowrap"
-                        style={{ left: `${(step.start / totalDuration) * 100 + (step.duration / totalDuration) * 50}%`, transform: 'translateX(-50%)' }}
+                        style={{
+                          left: `${(step.start / totalDuration) * 100 + (step.duration / totalDuration) * 50}%`,
+                          transform: 'translateX(-50%)',
+                        }}
                       >
                         {step.duration}ms {step.tokens !== '—' ? `· ${step.tokens} tok` : ''}
                       </div>
@@ -690,25 +837,28 @@ function ExecutionTimelineVisual() {
           </div>
 
           {/* Selected step detail */}
-          <div className={`mt-3 rounded-md border px-3 py-2 transition-all duration-300 ${
-            selectedStep
-              ? 'border-primary/30 bg-primary/5 opacity-100'
-              : 'border-transparent opacity-0'
-          }`}>
-            {selectedStep && (() => {
-              const step = timelineSteps.find(s => s.id === selectedStep);
-              if (!step) return null;
-              return (
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-primary">{step.label}</span>
-                  <div className="flex items-center gap-3 font-mono text-[9px] text-muted-foreground">
-                    <span>{step.duration}ms</span>
-                    {step.tokens !== '—' && <span>{step.tokens} tokens</span>}
-                    <span className="text-primary/60">{step.type}</span>
+          <div
+            className={`mt-3 rounded-md border px-3 py-2 transition-all duration-300 ${
+              selectedStep
+                ? 'border-primary/30 bg-primary/5 opacity-100'
+                : 'border-transparent opacity-0'
+            }`}
+          >
+            {selectedStep &&
+              (() => {
+                const step = timelineSteps.find((s) => s.id === selectedStep);
+                if (!step) return null;
+                return (
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] text-primary">{step.label}</span>
+                    <div className="flex items-center gap-3 font-mono text-[9px] text-muted-foreground">
+                      <span>{step.duration}ms</span>
+                      {step.tokens !== '—' && <span>{step.tokens} tokens</span>}
+                      <span className="text-primary/60">{step.type}</span>
+                    </div>
                   </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
           </div>
 
           {/* Legend */}
@@ -918,6 +1068,7 @@ function ReviewQueueVisual() {
           >
             {(['pending', 'wrong', 'resolved'] as const).map((tab) => (
               <button
+                type="button"
                 key={tab}
                 className={`flex-1 rounded-md px-3 py-1.5 font-mono text-xs transition-all ${
                   activeTab === tab
@@ -955,6 +1106,7 @@ function ReviewQueueVisual() {
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
+                    checked={activeTab === 'resolved'}
                     className="h-4 w-4 rounded border-border bg-muted accent-primary"
                     readOnly
                   />
@@ -970,7 +1122,10 @@ function ReviewQueueVisual() {
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[10px] text-muted-foreground">{item.time}</span>
                   {activeTab === 'wrong' && (
-                    <button className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1 font-mono text-[10px] text-primary hover:bg-primary/20">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1 font-mono text-[10px] text-primary hover:bg-primary/20"
+                    >
                       <Zap className="h-3 w-3" />
                       Debug
                     </button>
@@ -988,7 +1143,10 @@ function ReviewQueueVisual() {
               }`}
               style={{ transitionDelay: '600ms' }}
             >
-              <button className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 font-mono text-xs text-primary-foreground transition-colors hover:bg-primary/90">
+              <button
+                type="button"
+                className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 font-mono text-xs text-primary-foreground transition-colors hover:bg-primary/90"
+              >
                 <Play className="h-3 w-3" />
                 Replay & Validate
               </button>
@@ -1052,9 +1210,14 @@ function DataDriftVisual() {
               <span className="font-mono text-xs text-muted-foreground">Drift Detection</span>
             </div>
             {(phase === 'drift' || phase === 'analysis') && (
-              <div className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-0.5 transition-all duration-300" style={{ animation: 'glow-pulse 2s ease-in-out infinite' }}>
+              <div
+                className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-0.5 transition-all duration-300"
+                style={{ animation: 'glow-pulse 2s ease-in-out infinite' }}
+              >
                 <AlertTriangle className="h-3 w-3 text-red-400" />
-                <span className="font-mono text-[10px] font-medium text-red-400">DRIFT DETECTED</span>
+                <span className="font-mono text-[10px] font-medium text-red-400">
+                  DRIFT DETECTED
+                </span>
               </div>
             )}
           </div>
@@ -1062,15 +1225,19 @@ function DataDriftVisual() {
           {/* Two execution comparison */}
           <div className="grid grid-cols-2 gap-3 mb-3">
             {/* Run A header */}
-            <div className={`text-center font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
-              phase !== 'building' ? 'text-blue-400/70' : 'text-muted-foreground/40'
-            }`}>
+            <div
+              className={`text-center font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
+                phase !== 'building' ? 'text-blue-400/70' : 'text-muted-foreground/40'
+              }`}
+            >
               Run A — Feb 8
             </div>
             {/* Run B header */}
-            <div className={`text-center font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
-              phase !== 'building' ? 'text-primary/70' : 'text-muted-foreground/40'
-            }`}>
+            <div
+              className={`text-center font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
+                phase !== 'building' ? 'text-primary/70' : 'text-muted-foreground/40'
+              }`}
+            >
               Run B — Feb 10
             </div>
           </div>
@@ -1079,7 +1246,8 @@ function DataDriftVisual() {
           <div className="space-y-1">
             {steps.map((step, i) => {
               const showComparison = phase !== 'building';
-              const showDivergence = (phase === 'drift' || phase === 'analysis') && step.status === 'diverged';
+              const showDivergence =
+                (phase === 'drift' || phase === 'analysis') && step.status === 'diverged';
 
               return (
                 <div
@@ -1090,38 +1258,56 @@ function DataDriftVisual() {
                   style={{ transitionDelay: `${i * 80}ms` }}
                 >
                   {/* Run A step */}
-                  <div className={`flex items-center gap-2 rounded-md border px-2 py-1.5 transition-all duration-300 ${
-                    showDivergence
-                      ? 'border-blue-500/30 bg-blue-500/5'
-                      : showComparison && step.status === 'identical'
-                        ? 'border-green-500/20 bg-green-500/5'
-                        : 'border-border/30 bg-card/50'
-                  }`}>
-                    <span className={`font-mono text-[10px] ${
-                      showDivergence ? 'text-blue-400' : showComparison && step.status === 'identical' ? 'text-green-400/70' : 'text-muted-foreground/70'
-                    }`}>
+                  <div
+                    className={`flex items-center gap-2 rounded-md border px-2 py-1.5 transition-all duration-300 ${
+                      showDivergence
+                        ? 'border-blue-500/30 bg-blue-500/5'
+                        : showComparison && step.status === 'identical'
+                          ? 'border-green-500/20 bg-green-500/5'
+                          : 'border-border/30 bg-card/50'
+                    }`}
+                  >
+                    <span
+                      className={`font-mono text-[10px] ${
+                        showDivergence
+                          ? 'text-blue-400'
+                          : showComparison && step.status === 'identical'
+                            ? 'text-green-400/70'
+                            : 'text-muted-foreground/70'
+                      }`}
+                    >
                       {step.label}
                     </span>
                   </div>
 
                   {/* Run B step */}
-                  <div className={`flex items-center gap-2 rounded-md border px-2 py-1.5 transition-all duration-300 ${
-                    showDivergence
-                      ? 'border-primary/30 bg-primary/5'
-                      : showComparison && step.status === 'identical'
-                        ? 'border-green-500/20 bg-green-500/5'
-                        : 'border-border/30 bg-card/50'
-                  }`}>
-                    <span className={`font-mono text-[10px] ${
-                      showDivergence ? 'text-primary' : showComparison && step.status === 'identical' ? 'text-green-400/70' : 'text-muted-foreground/70'
-                    }`}>
+                  <div
+                    className={`flex items-center gap-2 rounded-md border px-2 py-1.5 transition-all duration-300 ${
+                      showDivergence
+                        ? 'border-primary/30 bg-primary/5'
+                        : showComparison && step.status === 'identical'
+                          ? 'border-green-500/20 bg-green-500/5'
+                          : 'border-border/30 bg-card/50'
+                    }`}
+                  >
+                    <span
+                      className={`font-mono text-[10px] ${
+                        showDivergence
+                          ? 'text-primary'
+                          : showComparison && step.status === 'identical'
+                            ? 'text-green-400/70'
+                            : 'text-muted-foreground/70'
+                      }`}
+                    >
                       {step.label}
                     </span>
                     {/* Status badge */}
                     {showComparison && (
-                      <span className={`ml-auto flex-shrink-0 font-mono text-[8px] ${
-                        showDivergence ? 'text-red-400' : 'text-green-400/50'
-                      }`}>
+                      <span
+                        className={`ml-auto flex-shrink-0 font-mono text-[8px] ${
+                          showDivergence ? 'text-red-400' : 'text-green-400/50'
+                        }`}
+                      >
                         {showDivergence ? 'changed' : 'match'}
                       </span>
                     )}
@@ -1132,17 +1318,19 @@ function DataDriftVisual() {
           </div>
 
           {/* Variable analysis panel */}
-          <div className={`mt-3 rounded-md border p-3 transition-all duration-500 ${
-            phase === 'analysis'
-              ? 'border-border/40 bg-card/60 opacity-100 translate-y-0'
-              : 'border-transparent bg-transparent opacity-0 translate-y-3'
-          }`}>
+          <div
+            className={`mt-3 rounded-md border p-3 transition-all duration-500 ${
+              phase === 'analysis'
+                ? 'border-border/40 bg-card/60 opacity-100 translate-y-0'
+                : 'border-transparent bg-transparent opacity-0 translate-y-3'
+            }`}
+          >
             <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
               Variable Analysis
             </div>
             <div className="space-y-1.5">
-              {variables.map((v, i) => (
-                <div key={i} className="flex items-center justify-between">
+              {variables.map((v) => (
+                <div key={v.label} className="flex items-center justify-between">
                   <span className="font-mono text-[10px] text-muted-foreground/70">{v.label}</span>
                   <div className="flex items-center gap-2">
                     {v.identical ? (
@@ -1186,26 +1374,82 @@ function TimelineScrubberVisual() {
   const timelineBarRef = useRef<HTMLDivElement>(null);
 
   const events = [
-    { id: 1,  type: 'user',  label: 'Add rate limiting to auth endpoints',      file: null,          time: '0:00', pos: 0  },
-    { id: 2,  type: 'agent', label: 'Reading existing codebase...',              file: null,          time: '0:08', pos: 3  },
-    { id: 3,  type: 'read',  label: 'auth.ts',                                  file: 'auth.ts',     time: '0:09', pos: 5  },
-    { id: 4,  type: 'read',  label: 'middleware.ts',                             file: 'middleware.ts', time: '0:10', pos: 7  },
-    { id: 5,  type: 'read',  label: 'redis.ts',                                 file: 'redis.ts',    time: '0:12', pos: 9  },
-    { id: 6,  type: 'bash',  label: 'pnpm test',                                file: null,          time: '0:22', pos: 16 },
-    { id: 7,  type: 'agent', label: 'Planning sliding window approach...',       file: null,          time: '0:38', pos: 24 },
-    { id: 8,  type: 'edit',  label: 'ratelimit.ts',                             file: 'ratelimit.ts', time: '0:55', pos: 34 },
-    { id: 9,  type: 'edit',  label: 'auth.ts',                                  file: 'auth.ts',     time: '1:04', pos: 38 },
-    { id: 10, type: 'edit',  label: 'redis.ts',                                 file: 'redis.ts',    time: '1:10', pos: 42 },
-    { id: 11, type: 'bash',  label: 'pnpm test --filter ratelimit',             file: null,          time: '1:12', pos: 45 },
-    { id: 12, type: 'bash',  label: 'pnpm build',                               file: null,          time: '1:22', pos: 49 },
-    { id: 13, type: 'agent', label: 'Tests passing, updating docs...',           file: null,          time: '1:28', pos: 53 },
-    { id: 14, type: 'edit',  label: 'README.md',                                file: 'README.md',   time: '1:35', pos: 57 },
-    { id: 15, type: 'user',  label: 'Also add per-endpoint limits',             file: null,          time: '2:28', pos: 66 },
-    { id: 16, type: 'agent', label: 'Good idea, adding per-route config...',    file: null,          time: '2:30', pos: 68 },
-    { id: 17, type: 'read',  label: 'routes.ts',                                file: 'routes.ts',   time: '2:41', pos: 73 },
-    { id: 18, type: 'edit',  label: 'ratelimit.ts',                             file: 'ratelimit.ts', time: '2:48', pos: 78 },
-    { id: 19, type: 'bash',  label: 'pnpm test',                                file: null,          time: '3:02', pos: 84 },
-    { id: 20, type: 'agent', label: 'All tests passing. Implementation complete!', file: null,       time: '3:14', pos: 92 },
+    {
+      id: 1,
+      type: 'user',
+      label: 'Add rate limiting to auth endpoints',
+      file: null,
+      time: '0:00',
+      pos: 0,
+    },
+    {
+      id: 2,
+      type: 'agent',
+      label: 'Reading existing codebase...',
+      file: null,
+      time: '0:08',
+      pos: 3,
+    },
+    { id: 3, type: 'read', label: 'auth.ts', file: 'auth.ts', time: '0:09', pos: 5 },
+    { id: 4, type: 'read', label: 'middleware.ts', file: 'middleware.ts', time: '0:10', pos: 7 },
+    { id: 5, type: 'read', label: 'redis.ts', file: 'redis.ts', time: '0:12', pos: 9 },
+    { id: 6, type: 'bash', label: 'pnpm test', file: null, time: '0:22', pos: 16 },
+    {
+      id: 7,
+      type: 'agent',
+      label: 'Planning sliding window approach...',
+      file: null,
+      time: '0:38',
+      pos: 24,
+    },
+    { id: 8, type: 'edit', label: 'ratelimit.ts', file: 'ratelimit.ts', time: '0:55', pos: 34 },
+    { id: 9, type: 'edit', label: 'auth.ts', file: 'auth.ts', time: '1:04', pos: 38 },
+    { id: 10, type: 'edit', label: 'redis.ts', file: 'redis.ts', time: '1:10', pos: 42 },
+    {
+      id: 11,
+      type: 'bash',
+      label: 'pnpm test --filter ratelimit',
+      file: null,
+      time: '1:12',
+      pos: 45,
+    },
+    { id: 12, type: 'bash', label: 'pnpm build', file: null, time: '1:22', pos: 49 },
+    {
+      id: 13,
+      type: 'agent',
+      label: 'Tests passing, updating docs...',
+      file: null,
+      time: '1:28',
+      pos: 53,
+    },
+    { id: 14, type: 'edit', label: 'README.md', file: 'README.md', time: '1:35', pos: 57 },
+    {
+      id: 15,
+      type: 'user',
+      label: 'Also add per-endpoint limits',
+      file: null,
+      time: '2:28',
+      pos: 66,
+    },
+    {
+      id: 16,
+      type: 'agent',
+      label: 'Good idea, adding per-route config...',
+      file: null,
+      time: '2:30',
+      pos: 68,
+    },
+    { id: 17, type: 'read', label: 'routes.ts', file: 'routes.ts', time: '2:41', pos: 73 },
+    { id: 18, type: 'edit', label: 'ratelimit.ts', file: 'ratelimit.ts', time: '2:48', pos: 78 },
+    { id: 19, type: 'bash', label: 'pnpm test', file: null, time: '3:02', pos: 84 },
+    {
+      id: 20,
+      type: 'agent',
+      label: 'All tests passing. Implementation complete!',
+      file: null,
+      time: '3:14',
+      pos: 92,
+    },
   ] as const;
 
   const eventDelays: Record<string, number> = {
@@ -1217,19 +1461,19 @@ function TimelineScrubberVisual() {
   };
 
   const typeColors: Record<string, string> = {
-    read:  'bg-blue-500',
-    edit:  'bg-orange-500',
-    bash:  'bg-green-500',
+    read: 'bg-blue-500',
+    edit: 'bg-orange-500',
+    bash: 'bg-green-500',
     agent: 'bg-violet-500',
-    user:  'bg-foreground/70',
+    user: 'bg-foreground/70',
   };
 
   const typeTextColors: Record<string, string> = {
-    read:  'text-blue-400',
-    edit:  'text-orange-400',
-    bash:  'text-green-400',
+    read: 'text-blue-400',
+    edit: 'text-orange-400',
+    bash: 'text-green-400',
     agent: 'text-violet-400',
-    user:  'text-foreground/80',
+    user: 'text-foreground/80',
   };
 
   // Start auto-playing when visible
@@ -1292,7 +1536,8 @@ function TimelineScrubberVisual() {
       <div
         className="relative rounded-lg p-[1px]"
         style={{
-          background: 'linear-gradient(135deg, hsl(25 95% 53% / 0.4), transparent 50%, hsl(25 95% 53% / 0.2))',
+          background:
+            'linear-gradient(135deg, hsl(25 95% 53% / 0.4), transparent 50%, hsl(25 95% 53% / 0.2))',
         }}
       >
         <div className="rounded-lg bg-card/90 p-5 backdrop-blur-sm">
@@ -1311,7 +1556,7 @@ function TimelineScrubberVisual() {
                   {tag}
                 </span>
               ))}
-              <span className="rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[9px] text-primary">
+              <span className="rounded bg-primary/[0.15] px-1.5 py-0.5 font-mono text-[9px] text-primary">
                 {currentIdx + 1}/{events.length}
               </span>
             </div>
@@ -1320,12 +1565,22 @@ function TimelineScrubberVisual() {
           {/* Timeline scrubber bar */}
           <div
             ref={timelineBarRef}
+            role="slider"
+            tabIndex={0}
+            aria-label="Timeline scrubber"
+            aria-valuemin={0}
+            aria-valuemax={events.length - 1}
+            aria-valuenow={currentIdx}
             className="relative h-10 cursor-pointer select-none overflow-visible rounded-md border border-border/30 bg-muted/40"
             onClick={handleTimelineClick}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') stepBack();
+              else if (e.key === 'ArrowRight') stepForward();
+            }}
           >
             {/* Activity density glow overlay */}
             <div
-              className="pointer-events-none absolute inset-0 rounded-md opacity-15"
+              className="pointer-events-none absolute inset-0 rounded-md opacity-[0.15]"
               style={{
                 background:
                   'radial-gradient(ellipse 20% 100% at 7% 50%, hsl(25 95% 53% / 0.7), transparent), ' +
@@ -1342,19 +1597,32 @@ function TimelineScrubberVisual() {
 
             {/* Event blocks */}
             {events.map((ev, i) => {
-              const isActive  = i <= currentIdx;
+              const isActive = i <= currentIdx;
               const isCurrent = i === currentIdx;
               return (
                 <div
                   key={ev.id}
                   className={`absolute rounded-sm transition-all duration-150 ${typeColors[ev.type]} ${
-                    isCurrent ? 'opacity-100' : isActive ? 'opacity-65' : 'opacity-15'
+                    isCurrent ? 'opacity-100' : isActive ? 'opacity-[0.65]' : 'opacity-[0.15]'
                   }`}
                   style={{
                     left: `${ev.pos}%`,
-                    top:    isCurrent ? '4px'  : (ev.type === 'agent' || ev.type === 'user') ? '8px'  : '10px',
-                    height: isCurrent ? '32px' : (ev.type === 'agent' || ev.type === 'user') ? '22px' : '18px',
-                    width:  (ev.type === 'agent' || ev.type === 'user') ? '5px' : ev.type === 'bash' ? '4px' : '3px',
+                    top: isCurrent
+                      ? '4px'
+                      : ev.type === 'agent' || ev.type === 'user'
+                        ? '8px'
+                        : '10px',
+                    height: isCurrent
+                      ? '32px'
+                      : ev.type === 'agent' || ev.type === 'user'
+                        ? '22px'
+                        : '18px',
+                    width:
+                      ev.type === 'agent' || ev.type === 'user'
+                        ? '5px'
+                        : ev.type === 'bash'
+                          ? '4px'
+                          : '3px',
                     transform: 'translateX(-50%)',
                   }}
                 />
@@ -1375,18 +1643,21 @@ function TimelineScrubberVisual() {
           {/* Playback controls + event counter */}
           <div className="mt-2.5 flex items-center gap-1">
             <button
+              type="button"
               className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
               onClick={stepBack}
             >
               <SkipBack className="h-3.5 w-3.5" />
             </button>
             <button
+              type="button"
               className="flex items-center justify-center rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10"
               onClick={() => setIsPlaying((p) => !p)}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </button>
             <button
+              type="button"
               className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
               onClick={stepForward}
             >
@@ -1401,20 +1672,24 @@ function TimelineScrubberVisual() {
           {/* Current event detail */}
           <div className="mt-2 flex items-center gap-2.5 rounded-md border border-border/40 bg-card/60 px-3 py-2">
             <span className={`h-2 w-2 flex-shrink-0 rounded-full ${typeColors[current.type]}`} />
-            <span className={`w-10 flex-shrink-0 font-mono text-[10px] uppercase tracking-wide ${typeTextColors[current.type]}`}>
+            <span
+              className={`w-10 flex-shrink-0 font-mono text-[10px] uppercase tracking-wide ${typeTextColors[current.type]}`}
+            >
               {current.type}
             </span>
-            <span className="truncate font-mono text-[11px] text-muted-foreground">{current.label}</span>
+            <span className="truncate font-mono text-[11px] text-muted-foreground">
+              {current.label}
+            </span>
           </div>
 
           {/* Legend */}
           <div className="mt-3 flex flex-wrap items-center justify-center gap-3 font-mono text-[9px] text-muted-foreground/60">
             {[
-              { label: 'Read',  color: 'bg-blue-500'     },
-              { label: 'Edit',  color: 'bg-orange-500'   },
-              { label: 'Bash',  color: 'bg-green-500'    },
-              { label: 'Agent', color: 'bg-violet-500'   },
-              { label: 'User',  color: 'bg-foreground/50' },
+              { label: 'Read', color: 'bg-blue-500' },
+              { label: 'Edit', color: 'bg-orange-500' },
+              { label: 'Bash', color: 'bg-green-500' },
+              { label: 'Agent', color: 'bg-violet-500' },
+              { label: 'User', color: 'bg-foreground/50' },
             ].map(({ label, color }) => (
               <span key={label} className="flex items-center gap-1">
                 <span className={`inline-block h-2 w-3 rounded-sm ${color}`} />
@@ -1442,64 +1717,6 @@ function SectionDivider() {
         }}
       />
     </div>
-  );
-}
-
-// ============================================================================
-// FINAL CTA SECTION
-// ============================================================================
-
-function CTASection() {
-  const { ref, isInView } = useInView();
-
-  return (
-    <section
-      ref={ref}
-      className={`relative py-32 transition-all duration-700 ${
-        isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-      }`}
-    >
-      <div className="mx-auto max-w-3xl px-6 text-center">
-        {/* Decorative element */}
-        <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-          <Terminal className="h-8 w-8 text-primary" />
-        </div>
-
-        <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl">
-          Ready to debug smarter?
-        </h2>
-        <p className="mx-auto mb-8 max-w-lg text-lg text-muted-foreground">
-          Stop guessing why your agents fail. Start seeing exactly what happened, step by step.
-        </p>
-
-        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Link href="/docs">
-            <Button size="lg" className="group px-8">
-              <span className="flex items-center gap-2">
-                Get Started Free
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Button>
-          </Link>
-        </div>
-
-        {/* Trust indicators */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-6 font-mono text-xs text-muted-foreground">
-          <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-success" />
-            Free to start
-          </span>
-          <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-success" />
-            TypeScript SDK
-          </span>
-          <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-success" />
-            Self-hosted option
-          </span>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -1626,10 +1843,6 @@ export function FeatureSections() {
         visual={<ReviewQueueVisual />}
         reverse
       />
-
-      <SectionDivider />
-
-      <CTASection />
     </div>
   );
 }

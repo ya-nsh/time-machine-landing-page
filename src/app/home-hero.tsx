@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GitBranch, Play, Layers, ChevronRight, Zap, Clock, ExternalLink } from 'lucide-react';
+import {
+  GitBranch,
+  Play,
+  Layers,
+  ChevronRight,
+  Clock,
+  ExternalLink,
+  Sparkles,
+  Terminal as TerminalIcon,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { FeatureSections } from './feature-sections';
 import { DASHBOARD_URL } from '@/lib/constants';
+import { HowItWorksModal } from './how-it-works-modal';
 
 // Floating code particles in background
 function FloatingParticles() {
@@ -21,10 +31,10 @@ function FloatingParticles() {
   ];
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {particles.map((particle, i) => (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      {particles.map((particle) => (
         <span
-          key={i}
+          key={particle.text}
           className="absolute font-mono text-xs text-primary/10"
           style={{
             left: `${particle.x}%`,
@@ -224,15 +234,21 @@ function HeroHeading() {
 // Subtitle
 function HeroSubtitle() {
   return (
-    <p className="mb-8 max-w-lg text-center font-mono text-sm leading-relaxed text-muted-foreground md:text-base">
-      Capture agent executions. Replay from any step.{' '}
-      <span className="text-foreground">Compare diffs visually.</span>
-    </p>
+    <div className="mb-8 flex flex-col items-center gap-3">
+      <p className="max-w-lg text-center font-mono text-sm leading-relaxed text-muted-foreground md:text-base">
+        Capture every agent step.{' '}
+        <span className="text-foreground">Fork from any point. Replay with one click.</span>
+      </p>
+      <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 backdrop-blur-sm">
+        <TerminalIcon className="h-3.5 w-3.5 text-primary" />
+        <span className="font-mono text-xs text-primary">Works with Claude Code — zero config</span>
+      </div>
+    </div>
   );
 }
 
-// CTA button
-function HeroActions() {
+// CTA buttons
+function HeroActions({ onHowItWorks }: { onHowItWorks: () => void }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
       <Link href="/docs">
@@ -243,8 +259,24 @@ function HeroActions() {
           </span>
         </Button>
       </Link>
+      <button onClick={onHowItWorks}>
+        <Button
+          size="lg"
+          variant="outline"
+          className="group px-8 border-border/40 hover:border-primary/50"
+        >
+          <span className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary transition-transform group-hover:rotate-12" />
+            How It Works
+          </span>
+        </Button>
+      </button>
       <a href={`${DASHBOARD_URL}/sign-up`} target="_blank" rel="noopener noreferrer">
-        <Button size="lg" variant="outline" className="group px-8 border-border/40 hover:border-primary/50">
+        <Button
+          size="lg"
+          variant="outline"
+          className="group px-8 border-border/40 hover:border-primary/50"
+        >
           <span className="flex items-center gap-2">
             Sign Up
             <ExternalLink className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
@@ -262,43 +294,60 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
   const [isTyping, setIsTyping] = useState(false);
 
   const codeLines = [
-    { prompt: true, text: 'timemachine trace ./agent.ts' },
-    { prompt: false, text: '> Recording execution...' },
-    { prompt: false, text: '> 12 steps captured' },
-    { prompt: true, text: 'timemachine fork --step 8' },
-    { prompt: false, text: '> Forked from step 8' },
-    { prompt: false, text: '> Diff ready at /review' },
+    { prompt: true, text: 'npx timemachine setup-claude-code' },
+    { prompt: false, text: '> 11 hooks installed. Capturing sessions...' },
+    { prompt: false, text: '> Claude Code session: 47 steps captured' },
+    { prompt: true, text: 'timemachine fork --step 31 --modify prompt' },
+    { prompt: false, text: '> Forked. Replaying steps 32-47...' },
+    { prompt: false, text: '> Done. Diff ready — saved $3.12 vs full re-run' },
   ];
 
   useEffect(() => {
     if (!mounted) return;
 
-    const typeText = async () => {
-      for (let lineIndex = 0; lineIndex < codeLines.length; lineIndex++) {
-        setCurrentLine(lineIndex);
-        const line = codeLines[lineIndex];
+    let cancelled = false;
 
-        if (line.prompt) {
-          setIsTyping(true);
-          setDisplayedText('');
-          for (let charIndex = 0; charIndex <= line.text.length; charIndex++) {
-            setDisplayedText(line.text.slice(0, charIndex));
-            await new Promise((r) => setTimeout(r, 30));
+    const sleep = (ms: number) =>
+      new Promise<void>((r) => {
+        const id = setTimeout(r, ms);
+        // Allow cleanup to reject pending sleeps
+        if (cancelled) clearTimeout(id);
+      });
+
+    const typeText = async () => {
+      while (!cancelled) {
+        for (let lineIndex = 0; lineIndex < codeLines.length; lineIndex++) {
+          if (cancelled) return;
+          setCurrentLine(lineIndex);
+          const line = codeLines[lineIndex];
+
+          if (line.prompt) {
+            setIsTyping(true);
+            setDisplayedText('');
+            for (let charIndex = 0; charIndex <= line.text.length; charIndex++) {
+              if (cancelled) return;
+              setDisplayedText(line.text.slice(0, charIndex));
+              await sleep(30);
+            }
+            setIsTyping(false);
+            await sleep(300);
+          } else {
+            await sleep(400);
           }
-          setIsTyping(false);
-          await new Promise((r) => setTimeout(r, 300));
-        } else {
-          await new Promise((r) => setTimeout(r, 400));
         }
+        // Reset and loop
+        await sleep(2000);
+        if (cancelled) return;
+        setCurrentLine(0);
+        setDisplayedText('');
       }
-      // Reset and loop
-      await new Promise((r) => setTimeout(r, 2000));
-      setCurrentLine(0);
-      setDisplayedText('');
-      typeText();
     };
 
     typeText();
+
+    return () => {
+      cancelled = true;
+    };
   }, [mounted]);
 
   return (
@@ -319,10 +368,10 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
             <div className="h-3 w-3 rounded-full bg-red-500/70 transition-all hover:bg-red-500" />
             <div className="h-3 w-3 rounded-full bg-yellow-500/70 transition-all hover:bg-yellow-500" />
             <div className="h-3 w-3 rounded-full bg-green-500/70 transition-all hover:bg-green-500" />
-            <span className="ml-4 font-mono text-xs text-muted-foreground">~/my-agent</span>
-            <div className="ml-auto flex items-center gap-1 text-muted-foreground/50">
-              <Zap className="h-3 w-3" />
-              <span className="font-mono text-[10px]">live</span>
+            <span className="ml-4 font-mono text-xs text-muted-foreground">~/my-project</span>
+            <div className="ml-auto flex items-center gap-1">
+              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="font-mono text-[10px] text-green-500/70">claude code</span>
             </div>
           </div>
 
@@ -330,7 +379,7 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
           <div className="p-4 font-mono text-sm min-h-[180px]">
             {codeLines.map((line, index) => (
               <div
-                key={index}
+                key={`${line.text}-${index}`}
                 className={`transition-all duration-300 ${
                   index < currentLine
                     ? 'opacity-100 translate-y-0'
@@ -381,23 +430,38 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
 // Bottom feature pills with enhanced hover effects
 function FeaturePills() {
   const features = [
-    { icon: GitBranch, label: 'Fork & Replay', description: 'Branch from any step' },
-    { icon: Layers, label: 'Step-by-Step Tracing', description: 'See every decision' },
-    { icon: Play, label: 'Visual Diff', description: 'Compare side by side' },
-    { icon: Clock, label: 'Time Travel', description: 'Go back in time' },
+    { icon: TerminalIcon, label: 'Claude Code', highlight: true },
+    { icon: GitBranch, label: 'Fork & Replay', highlight: true },
+    { icon: Layers, label: 'Step-by-Step Tracing', highlight: false },
+    { icon: Play, label: 'Visual Diff', highlight: false },
+    { icon: Clock, label: 'Time Travel', highlight: false },
   ];
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-3 px-6 pb-8">
-      {features.map(({ icon: Icon, label }) => (
+      {features.map(({ icon: Icon, label, highlight }) => (
         <div
           key={label}
-          className="group flex items-center gap-2 rounded-full border border-border/30 bg-card/30 px-4 py-2 backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/5"
+          className={`group flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/5 ${
+            highlight
+              ? 'border-primary/40 bg-primary/10 shadow-sm shadow-primary/10'
+              : 'border-border/30 bg-card/30'
+          }`}
         >
-          <Icon className="h-4 w-4 text-primary transition-transform group-hover:scale-110" />
-          <span className="font-mono text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+          <Icon
+            className={`h-4 w-4 transition-transform group-hover:scale-110 ${highlight ? 'text-primary' : 'text-primary/70'}`}
+          />
+          <span
+            className={`font-mono text-xs transition-colors group-hover:text-foreground ${highlight ? 'text-foreground' : 'text-muted-foreground'}`}
+          >
             {label}
           </span>
+          {highlight && (
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+            </span>
+          )}
         </div>
       ))}
     </div>
@@ -407,6 +471,7 @@ function FeaturePills() {
 // Main hero component
 export function HomeHero() {
   const [mounted, setMounted] = useState(false);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -427,19 +492,38 @@ export function HomeHero() {
           <TerminalNav />
 
           <main className="flex flex-1 flex-col items-center justify-center px-6">
-            <StatusBadge />
-            <HeroHeading />
-            <HeroSubtitle />
-            <HeroActions />
-            <TerminalPreview mounted={mounted} />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="flex flex-col items-center"
+            >
+              <StatusBadge />
+              <HeroHeading />
+              <HeroSubtitle />
+              <HeroActions onHowItWorks={() => setShowHowItWorks(true)} />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <TerminalPreview mounted={mounted} />
+            </motion.div>
           </main>
 
-          <FeaturePills />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            <FeaturePills />
+          </motion.div>
         </div>
       </div>
 
-      {/* Feature sections below the fold */}
-      <FeatureSections />
+      {/* How It Works Modal */}
+      <HowItWorksModal isOpen={showHowItWorks} onClose={() => setShowHowItWorks(false)} />
     </>
   );
 }
