@@ -44,7 +44,7 @@ export function ComparisonSection() {
   const isInView = useInView(ref, { once: true, amount: 0.2 });
 
   return (
-    <section ref={ref} className="relative py-24">
+    <section ref={ref} className="relative py-16 sm:py-24">
       <div className="mx-auto max-w-4xl px-6">
         {/* Header */}
         <div className="mb-12 text-center">
@@ -86,11 +86,11 @@ export function ComparisonSection() {
           className="overflow-hidden rounded-lg border border-border/40 bg-card/50 backdrop-blur-sm"
         >
           {/* Table Header */}
-          <div className="grid grid-cols-[1fr_140px_140px] items-center border-b border-border/40 bg-card/80 px-6 py-4 md:grid-cols-[1fr_180px_180px]">
+          <div className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-[1fr_140px_140px] items-center border-b border-border/40 bg-card/80 px-3 py-3 sm:px-6 sm:py-4 md:grid-cols-[1fr_180px_180px]">
             <span className="text-sm font-medium text-muted-foreground">Feature</span>
             <span className="text-center text-sm font-medium text-muted-foreground">
               Others
-              <span className="mt-0.5 block text-xs text-muted-foreground/60">
+              <span className="mt-0.5 hidden text-xs text-muted-foreground/60 sm:block">
                 LangSmith, Langfuse
               </span>
             </span>
@@ -104,7 +104,7 @@ export function ComparisonSection() {
               initial={{ opacity: 0, x: -10 }}
               animate={isInView ? { opacity: 1, x: 0 } : {}}
               transition={{ duration: 0.3, delay: 0.35 + index * 0.07 }}
-              className={`grid grid-cols-[1fr_140px_140px] items-center border-b border-border/20 px-6 py-3.5 transition-colors md:grid-cols-[1fr_180px_180px] ${
+              className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-[1fr_140px_140px] items-center border-b border-border/20 px-3 py-3 sm:px-6 sm:py-3.5 transition-colors md:grid-cols-[1fr_180px_180px] ${
                 row.exclusive ? 'bg-primary/[0.03] hover:bg-primary/[0.06]' : 'hover:bg-card/80'
               }`}
             >
@@ -115,7 +115,7 @@ export function ComparisonSection() {
               >
                 {row.feature}
                 {row.exclusive && (
-                  <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <span className="ml-2 hidden items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary sm:inline-flex">
                     Exclusive
                   </span>
                 )}

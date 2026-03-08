@@ -78,20 +78,20 @@ function FeatureSection({
   return (
     <section
       ref={ref}
-      className={`relative py-24 transition-all duration-700 ${
+      className={`relative py-16 sm:py-24 transition-all duration-700 ${
         isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}
     >
       <div className="mx-auto max-w-6xl px-6">
         <div
-          className={`grid items-center gap-12 md:grid-cols-2 md:gap-16 ${reverse ? 'md:[&>*:first-child]:order-2' : ''}`}
+          className={`grid items-center gap-8 md:grid-cols-2 md:gap-16 ${reverse ? 'md:[&>*:first-child]:order-2' : ''}`}
         >
           {/* Text content */}
           <div className="flex flex-col">
             <span className="mb-4 inline-flex w-fit items-center rounded-full border border-primary/30 bg-primary/5 px-3 py-1 font-mono text-xs text-primary">
               {badge}
             </span>
-            <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl">
+            <h2 className="mb-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl">
               {title}
             </h2>
             <p className="mb-8 text-lg leading-relaxed text-muted-foreground">{description}</p>
@@ -783,7 +783,7 @@ function ExecutionTimelineVisual() {
                 >
                   {/* Label */}
                   <div
-                    className={`w-[100px] flex-shrink-0 truncate pr-2 font-mono text-[10px] transition-colors ${
+                    className={`w-[70px] flex-shrink-0 truncate pr-2 font-mono text-[10px] transition-colors sm:w-[100px] ${
                       isSelected
                         ? 'text-primary'
                         : isHovered
