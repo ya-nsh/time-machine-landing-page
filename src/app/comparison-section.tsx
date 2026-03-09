@@ -18,7 +18,7 @@ const features: FeatureRow[] = [
   { feature: 'Fork from any step', others: false, timeMachine: true, exclusive: true },
   { feature: 'Replay with modifications', others: false, timeMachine: true, exclusive: true },
   { feature: 'Visual diff comparison', others: false, timeMachine: true, exclusive: true },
-  { feature: 'Claude Code integration', others: false, timeMachine: true, exclusive: true },
+  { feature: 'Claude Code + MCP integration', others: false, timeMachine: true, exclusive: true },
   { feature: 'Data drift detection', others: false, timeMachine: true, exclusive: true },
 ];
 

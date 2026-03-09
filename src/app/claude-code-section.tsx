@@ -25,6 +25,7 @@ const terminalLines = [
   { text: '  → SubagentStart', type: 'hook' as const, delay: 200 },
   { text: '  → SessionEnd', type: 'hook' as const, delay: 200 },
   { text: '✓ 11 hooks configured', type: 'success' as const, delay: 600 },
+  { text: '✓ MCP server configured for Claude Code', type: 'success' as const, delay: 500 },
   { text: '✓ Ready! Every session will be captured.', type: 'final' as const, delay: 400 },
 ];
 
@@ -266,6 +267,11 @@ const features = [
     icon: DollarSign,
     title: 'Cost visibility',
     description: 'Token counts and costs per session, per step',
+  },
+  {
+    icon: Terminal,
+    title: 'Query from Claude Code',
+    description: 'Ask Claude Code to pull a failed run and inspect the trace. The debugging loop stays where the development loop lives.',
   },
 ];
 
