@@ -1151,7 +1151,7 @@ claude`}</CodeBlock>
               Installation
             </h3>
             <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
-              Add the following to your Claude Code MCP configuration (typically <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.claude/claude_desktop_config.json</code> or your project&apos;s <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.mcp.json</code>):
+              Add the following to your project&apos;s <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.claude/settings.json</code> (or <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.claude/settings.json</code> for global config):
             </p>
             <CodeBlock title=".mcp.json" language="json">{`{
   "mcpServers": {
