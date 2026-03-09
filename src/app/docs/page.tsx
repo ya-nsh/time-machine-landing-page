@@ -222,6 +222,7 @@ const NAV_SECTIONS = [
     title: 'Integrations',
     items: [
       { label: 'Claude Code', id: 'claude-code' },
+      { label: 'MCP Server', id: 'mcp-server' },
       { label: 'LangChain Adapter', id: 'langchain' },
       { label: 'OpenRouter', id: 'openrouter' },
       { label: 'Utilities', id: 'utilities' },
@@ -1133,6 +1134,63 @@ node --input-type=module -e "
 
 # Verify — run a session, check dashboard
 claude`}</CodeBlock>
+          </section>
+
+          {/* ─── MCP Server ────────────────────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="mcp-server" />
+            <h2 className="mb-2 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <Server className="h-6 w-6 text-primary" />
+              MCP Server
+            </h2>
+            <p className="mb-8 text-sm text-muted-foreground">
+              Query your Time Machine executions from within Claude Code. The MCP server exposes your project&apos;s runs, traces, and steps as tools Claude Code can call directly.
+            </p>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">
+              Installation
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              Add the following to your Claude Code MCP configuration (typically <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.claude/claude_desktop_config.json</code> or your project&apos;s <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.mcp.json</code>):
+            </p>
+            <CodeBlock title=".mcp.json" language="json">{`{
+  "mcpServers": {
+    "timemachine": {
+      "command": "npx",
+      "args": ["-y", "@timemachine-sdk/mcp"],
+      "env": {
+        "TIMEMACHINE_API_KEY": "tm_...",
+        "TIMEMACHINE_PROJECT_ID": "proj_...",
+        "TIMEMACHINE_BASE_URL": "https://app.timemachinesdk.dev"
+      }
+    }
+  }
+}`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Available Tools
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              Once configured, Claude Code can call the following tools against your Time Machine project:
+            </p>
+            <ApiTable
+              headers={['Tool', 'Description']}
+              rows={[
+                ['list_executions', 'List executions, filter by status or runtime'],
+                ['get_execution', 'Full execution detail + metadata'],
+                ['get_steps', 'All steps for an execution'],
+                ['get_failed_runs', 'Shortcut: list failed executions'],
+              ]}
+            />
+
+            <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Terminal className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                <span>
+                  <strong className="text-foreground">Tip:</strong> Ask Claude Code something like &ldquo;Pull my last failed run and show me what went wrong&rdquo; — it will call <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">get_failed_runs</code> and then <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">get_steps</code> to walk through the trace inline. The debugging loop stays where the development loop lives.
+                </span>
+              </p>
+            </div>
           </section>
 
           {/* ─── LangChain Adapter ─────────────────────────── */}
