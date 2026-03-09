@@ -294,12 +294,14 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
   const [isTyping, setIsTyping] = useState(false);
 
   const codeLines = [
-    { prompt: true, text: 'npx timemachine setup-claude-code' },
-    { prompt: false, text: '> 11 hooks installed. Capturing sessions...' },
-    { prompt: false, text: '> Claude Code session: 47 steps captured' },
-    { prompt: true, text: 'timemachine fork --step 31 --modify prompt' },
-    { prompt: false, text: '> Forked. Replaying steps 32-47...' },
-    { prompt: false, text: '> Done. Diff ready — saved $3.12 vs full re-run' },
+    { prompt: true, text: 'tm setup' },
+    { prompt: false, text: '✔ 11 Claude Code hooks installed' },
+    { prompt: true, text: 'tm failed' },
+    { prompt: false, text: '  3 failed execution(s)' },
+    { prompt: false, text: '  Inspect: tm view abc123' },
+    { prompt: true, text: 'tm fork abc123 --at 12 --replay' },
+    { prompt: false, text: '✔ Fork created  →  replaying steps 13-47…' },
+    { prompt: false, text: '✔ completed — saved $3.12 vs full re-run' },
   ];
 
   useEffect(() => {
