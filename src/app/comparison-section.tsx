@@ -19,6 +19,7 @@ const features: FeatureRow[] = [
   { feature: 'Replay with modifications', others: false, timeMachine: true, exclusive: true },
   { feature: 'Visual diff comparison', others: false, timeMachine: true, exclusive: true },
   { feature: 'Claude Code + MCP integration', others: false, timeMachine: true, exclusive: true },
+  { feature: 'Eval suites with CI/CD gates', others: false, timeMachine: true, exclusive: true },
   { feature: 'Data drift detection', others: false, timeMachine: true, exclusive: true },
 ];
 

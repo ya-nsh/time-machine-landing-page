@@ -3,6 +3,7 @@ import { StatsSection } from './stats-section';
 import { HowItWorks } from './how-it-works';
 import { ClaudeCodeSection } from './claude-code-section';
 import { FeatureSections } from './feature-sections';
+import { EvalsSection } from './evals-section';
 import { ComparisonSection } from './comparison-section';
 import { CTASection } from './cta-section';
 import { Footer } from './footer';
@@ -15,6 +16,7 @@ export default function HomePage() {
       <HowItWorks />
       <ClaudeCodeSection />
       <FeatureSections />
+      <EvalsSection />
       <ComparisonSection />
       <CTASection />
       <Footer />
