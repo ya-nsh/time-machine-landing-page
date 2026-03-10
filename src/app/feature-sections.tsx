@@ -1724,7 +1724,7 @@ function SectionDivider() {
 // MAIN EXPORT
 // ============================================================================
 
-export function FeatureSections() {
+export function FeatureSectionsTop() {
   return (
     <div className="relative bg-background">
       {/* Subtle gradient transition from hero */}
@@ -1765,7 +1765,13 @@ export function FeatureSections() {
         visual={<TimelineScrubberVisual />}
         reverse
       />
+    </div>
+  );
+}
 
+export function FeatureSectionsBottom() {
+  return (
+    <div className="relative bg-background">
       <SectionDivider />
 
       <FeatureSection
