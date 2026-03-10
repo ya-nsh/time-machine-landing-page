@@ -223,6 +223,7 @@ const NAV_SECTIONS = [
     items: [
       { label: 'Claude Code', id: 'claude-code' },
       { label: 'MCP Server', id: 'mcp-server' },
+      { label: 'CLI (tm)', id: 'cli' },
       { label: 'LangChain Adapter', id: 'langchain' },
       { label: 'OpenRouter', id: 'openrouter' },
       { label: 'Utilities', id: 'utilities' },
@@ -1143,17 +1144,20 @@ claude`}</CodeBlock>
               <Server className="h-6 w-6 text-primary" />
               MCP Server
             </h2>
-            <p className="mb-8 text-sm text-muted-foreground">
-              Query your Time Machine executions from within Claude Code. The MCP server exposes your project&apos;s runs, traces, and steps as tools Claude Code can call directly.
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              The <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">@timemachine-sdk/mcp</code> package exposes your project&apos;s runs, traces, and steps as MCP tools that Claude Code can call directly — without opening a browser. Inspect failures, walk through traces, and get aggregate stats all within the Claude Code terminal.
+            </p>
+            <p className="mb-8 text-sm text-muted-foreground leading-relaxed">
+              The MCP server uses the same v1 API, reads three environment variables, and communicates with Claude Code over stdio (no daemon, no port).
             </p>
 
             <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">
               Installation
             </h3>
             <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
-              Add the following to your project&apos;s <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.claude/settings.json</code> (or <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.claude/settings.json</code> for global config):
+              Add the following to your project&apos;s <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">.claude/settings.json</code> (or <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.claude/settings.json</code> for a global install):
             </p>
-            <CodeBlock title=".mcp.json" language="json">{`{
+            <CodeBlock title=".claude/settings.json" language="json">{`{
   "mcpServers": {
     "timemachine": {
       "command": "npx",
@@ -1167,27 +1171,174 @@ claude`}</CodeBlock>
   }
 }`}</CodeBlock>
 
-            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+            <p className="mb-8 mt-6 text-sm text-muted-foreground leading-relaxed">
+              Restart Claude Code after saving. The server starts on demand — you&apos;ll see a <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">timemachine</code> entry in <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">/mcp</code>.
+            </p>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">
               Available Tools
             </h3>
             <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
-              Once configured, Claude Code can call the following tools against your Time Machine project:
+              Six tools are registered. All return structured plain-text so Claude can reason over results directly:
             </p>
             <ApiTable
-              headers={['Tool', 'Description']}
+              headers={['Tool', 'Description', 'Key params']}
               rows={[
-                ['list_executions', 'List executions, filter by status or runtime'],
-                ['get_execution', 'Full execution detail + metadata'],
-                ['get_steps', 'All steps for an execution'],
-                ['get_failed_runs', 'Shortcut: list failed executions'],
+                ['list_executions', 'List executions with optional filters', 'status, runtime, limit (default 20)'],
+                ['get_execution', 'Full execution detail — name, status, cost, tokens, metadata', 'execution_id'],
+                ['get_steps', 'All steps with type, status, latency, input, output, and error detail', 'execution_id'],
+                ['get_failed_runs', 'Shortcut: recent failed executions with debug hints', 'limit (default 10)'],
+                ['tail_execution', 'Poll an in-progress execution until it reaches a terminal state', 'execution_id'],
+                ['get_project_stats', 'Aggregate stats across your last 100 runs — success rate, avg cost, avg tokens, p95 latency', '—'],
               ]}
             />
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Example prompts
+            </h3>
+            <div className="mb-8 space-y-3">
+              {[
+                'Show me my last 5 failed runs.',
+                'Get the full trace for execution abc123 and tell me what went wrong.',
+                'What was my agent doing in the last Claude Code session?',
+                'Give me aggregate stats on my last 100 runs.',
+                'Watch execution def456 until it finishes.',
+              ].map((prompt) => (
+                <div
+                  key={prompt}
+                  className="flex items-start gap-3 rounded-lg border border-border/40 bg-card/50 px-4 py-3"
+                >
+                  <span className="mt-0.5 font-mono text-xs text-primary">›</span>
+                  <span className="font-mono text-sm text-muted-foreground">{prompt}</span>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">
+              How it works
+            </h3>
+            <div className="mb-6 rounded-lg border border-border/40 bg-card/50 px-6 py-5 text-sm text-muted-foreground leading-relaxed">
+              <div className="flex flex-col gap-2 font-mono text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="w-28 text-right text-muted-foreground/60">you type</span>
+                  <span className="text-primary">→</span>
+                  <span>Claude Code reads prompt</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-28 text-right text-muted-foreground/60">Claude decides</span>
+                  <span className="text-primary">→</span>
+                  <span>calls <code className="rounded bg-background px-1">get_failed_runs</code></span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-28 text-right text-muted-foreground/60">MCP server</span>
+                  <span className="text-primary">→</span>
+                  <span>fetches <code className="rounded bg-background px-1">GET /api/v1/executions?status=failed</code></span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-28 text-right text-muted-foreground/60">returns</span>
+                  <span className="text-primary">→</span>
+                  <span>structured text Claude can reason over</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-28 text-right text-muted-foreground/60">Claude responds</span>
+                  <span className="text-primary">→</span>
+                  <span>inline trace analysis + fix suggestions</span>
+                </div>
+              </div>
+            </div>
 
             <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
               <p className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Terminal className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                 <span>
-                  <strong className="text-foreground">Tip:</strong> Ask Claude Code something like &ldquo;Pull my last failed run and show me what went wrong&rdquo; — it will call <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">get_failed_runs</code> and then <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">get_steps</code> to walk through the trace inline. The debugging loop stays where the development loop lives.
+                  <strong className="text-foreground">Roadmap:</strong> Querying runs is step one. Native replay — inspect a failure, fork from the problem step, re-run with a fix — is in development. See the{' '}
+                  <a
+                    href="https://github.com/ya-nsh/time-machine-sdk/blob/main/docs/roadmap-native-replay.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    native replay roadmap
+                  </a>
+                  .
+                </span>
+              </p>
+            </div>
+          </section>
+
+          {/* ─── CLI (tm) ──────────────────────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="cli" />
+            <h2 className="mb-2 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <Terminal className="h-6 w-6 text-primary" />
+              CLI — <code className="font-mono text-primary">tm</code>
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">@timemachine-sdk/cli</code> gives you a native terminal interface to your Time Machine project. List runs, tail live executions, inspect traces, fork at a failed step, and open the dashboard — all from your shell, without touching a browser.
+            </p>
+            <p className="mb-8 text-sm text-muted-foreground leading-relaxed">
+              The CLI is the fastest way to debug a failure: <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">tm failed</code> shows the last crash, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">tm view &lt;id&gt;</code> walks the full trace, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">tm fork &lt;id&gt; --replay</code> re-runs from the broken step.
+            </p>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">Install</h3>
+            <CodeBlock title="terminal">{`npm install -g @timemachine-sdk/cli
+# or run without installing:
+npx @timemachine-sdk/cli --help`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Configuration
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              Run <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">tm config set</code> once to store credentials in <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">~/.timemachine/config.json</code>:
+            </p>
+            <CodeBlock title="terminal">{`tm config set --api-key tm_... --project-id proj_...
+
+# Or use environment variables:
+export TIMEMACHINE_API_KEY=tm_...
+export TIMEMACHINE_PROJECT_ID=proj_...`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">Commands</h3>
+            <ApiTable
+              headers={['Command', 'Description']}
+              rows={[
+                ['tm ls', 'List recent executions in a color-coded table (status, cost, tokens, duration)'],
+                ['tm ls --status failed', 'Filter by status: running | completed | failed | cancelled'],
+                ['tm ls --runtime langchain', 'Filter by runtime tag'],
+                ['tm view <id>', 'Full trace — all steps with type, latency, cost, LLM output snippet, and tool name'],
+                ['tm view <id> --json', 'Raw JSON output — pipe to jq or save for diffing'],
+                ['tm tail [id]', 'Stream a live execution, printing new steps as they arrive. Omit ID to tail the latest.'],
+                ['tm tail --all', 'Show all existing steps on attach, then stream new ones'],
+                ['tm failed', 'Recent failed executions with one-line debug hints'],
+                ['tm fork <id>', 'Fork an execution at a chosen step (interactive step picker)'],
+                ['tm fork <id> --at 3', 'Fork at step index 3 directly'],
+                ['tm fork <id> --at 3 --replay', 'Fork and immediately start replay'],
+                ['tm stats', 'Aggregate stats across last 100 runs: success rate, avg cost, avg tokens, p95 latency'],
+                ['tm open <id>', 'Open execution in dashboard (browser)'],
+                ['tm setup', 'Install Claude Code hooks — same as installClaudeCodeHooks() but from the terminal'],
+                ['tm config show', 'Display current config (key redacted)'],
+              ]}
+            />
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">
+              Typical debug workflow
+            </h3>
+            <CodeBlock title="terminal">{`# 1. See what failed
+tm failed
+
+# 2. Inspect the trace
+tm view exec_abc123
+
+# 3. Fork at the broken step and replay
+tm fork exec_abc123 --at 4 --replay
+
+# 4. Watch the replay live
+tm tail exec_def456`}</CodeBlock>
+
+            <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Zap className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                <span>
+                  <strong className="text-foreground">Claude Code integration:</strong> Run <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">tm setup</code> to install hooks that automatically capture every Claude Code session as a traced execution — no code changes needed. Then use <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">tm tail</code> to watch your Claude session live.
                 </span>
               </p>
             </div>
