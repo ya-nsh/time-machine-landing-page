@@ -287,68 +287,91 @@ function HeroActions({ onHowItWorks }: { onHowItWorks: () => void }) {
   );
 }
 
+// Lines are defined outside the component so they never cause re-renders
+const TERMINAL_SCRIPT = [
+  { prompt: true,  text: 'tm setup' },
+  { prompt: false, text: '✔ 11 Claude Code hooks installed' },
+  { prompt: true,  text: 'tm failed' },
+  { prompt: false, text: '  3 failed execution(s)' },
+  { prompt: false, text: '  Inspect: tm view abc123' },
+  { prompt: true,  text: 'tm fork abc123 --at 12 --replay' },
+  { prompt: false, text: '✔ Fork created  →  replaying steps 13-47…' },
+  { prompt: false, text: '✔ completed — saved $3.12 vs full re-run' },
+] as const;
+
+interface CommittedLine {
+  id: number;
+  text: string;
+  isPrompt: boolean;
+}
+
+let _lineId = 0;
+
 // Animated terminal preview card with typing effect and gradient border
 function TerminalPreview({ mounted }: { mounted: boolean }) {
-  const [currentLine, setCurrentLine] = useState(0);
-  const [displayedText, setDisplayedText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-
-  const codeLines = [
-    { prompt: true, text: 'tm setup' },
-    { prompt: false, text: '✔ 11 Claude Code hooks installed' },
-    { prompt: true, text: 'tm failed' },
-    { prompt: false, text: '  3 failed execution(s)' },
-    { prompt: false, text: '  Inspect: tm view abc123' },
-    { prompt: true, text: 'tm fork abc123 --at 12 --replay' },
-    { prompt: false, text: '✔ Fork created  →  replaying steps 13-47…' },
-    { prompt: false, text: '✔ completed — saved $3.12 vs full re-run' },
-  ];
+  // Separate state for committed lines vs the currently-typing line.
+  // This prevents per-line CSS transitions from firing on every keystroke.
+  const [committed, setCommitted] = useState<CommittedLine[]>([]);
+  const [typing, setTyping] = useState('');
+  const [showCursor, setShowCursor] = useState(false);
+  const [dimmed, setDimmed] = useState(false);
 
   useEffect(() => {
     if (!mounted) return;
 
     let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
+    // Sleep that rejects immediately if cancelled, allowing the run loop to exit cleanly
     const sleep = (ms: number) =>
-      new Promise<void>((r) => {
-        const id = setTimeout(r, ms);
-        // Allow cleanup to reject pending sleeps
-        if (cancelled) clearTimeout(id);
+      new Promise<void>((resolve, reject) => {
+        if (cancelled) { reject(); return; }
+        const id = setTimeout(() => (cancelled ? reject() : resolve()), ms);
+        timers.push(id);
       });
 
-    const typeText = async () => {
-      while (!cancelled) {
-        for (let lineIndex = 0; lineIndex < codeLines.length; lineIndex++) {
-          if (cancelled) return;
-          setCurrentLine(lineIndex);
-          const line = codeLines[lineIndex];
-
-          if (line.prompt) {
-            setIsTyping(true);
-            setDisplayedText('');
-            for (let charIndex = 0; charIndex <= line.text.length; charIndex++) {
-              if (cancelled) return;
-              setDisplayedText(line.text.slice(0, charIndex));
-              await sleep(30);
+    const run = async () => {
+      try {
+        while (!cancelled) {
+          for (const line of TERMINAL_SCRIPT) {
+            if (line.prompt) {
+              setShowCursor(true);
+              setTyping('');
+              for (let j = 0; j <= line.text.length; j++) {
+                await sleep(28);
+                setTyping(line.text.slice(0, j));
+              }
+              await sleep(280);
+              // Commit the typed line; reset the typing buffer
+              setCommitted((prev) => [...prev, { id: _lineId++, text: line.text, isPrompt: true }]);
+              setTyping('');
+              setShowCursor(false);
+            } else {
+              await sleep(380);
+              setCommitted((prev) => [...prev, { id: _lineId++, text: line.text, isPrompt: false }]);
             }
-            setIsTyping(false);
-            await sleep(300);
-          } else {
-            await sleep(400);
           }
+
+          // Pause, fade out the whole content, clear, fade back in
+          await sleep(2200);
+          setDimmed(true);
+          await sleep(450);
+          setCommitted([]);
+          setTyping('');
+          setShowCursor(false);
+          setDimmed(false);
+          await sleep(300);
         }
-        // Reset and loop
-        await sleep(2000);
-        if (cancelled) return;
-        setCurrentLine(0);
-        setDisplayedText('');
+      } catch {
+        // Cancelled — exit silently
       }
     };
 
-    typeText();
+    run();
 
     return () => {
       cancelled = true;
+      timers.forEach(clearTimeout);
     };
   }, [mounted]);
 
@@ -370,58 +393,47 @@ function TerminalPreview({ mounted }: { mounted: boolean }) {
             <div className="h-2.5 w-2.5 rounded-full bg-red-500/70 sm:h-3 sm:w-3" />
             <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70 sm:h-3 sm:w-3" />
             <div className="h-2.5 w-2.5 rounded-full bg-green-500/70 sm:h-3 sm:w-3" />
-            <span className="ml-2 truncate font-mono text-[10px] text-muted-foreground sm:ml-4 sm:text-xs">~/my-project</span>
+            <span className="ml-2 truncate font-mono text-[10px] text-muted-foreground sm:ml-4 sm:text-xs">
+              ~/my-project
+            </span>
             <div className="ml-auto flex shrink-0 items-center gap-1">
               <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
               <span className="font-mono text-[10px] text-green-500/70">claude code</span>
             </div>
           </div>
 
-          {/* Terminal content */}
-          <div className="p-3 sm:p-4 font-mono text-xs sm:text-sm h-[196px]">
-            {codeLines.map((line, index) => (
-              <div
-                key={`${line.text}-${index}`}
-                className={`transition-all duration-300 ${
-                  index < currentLine
-                    ? 'opacity-100 translate-y-0'
-                    : index === currentLine
-                      ? 'opacity-100 translate-y-0'
-                      : 'opacity-0 translate-y-2'
-                }`}
-              >
-                {line.prompt ? (
+          {/* Terminal content — only the outer wrapper fades, never individual lines */}
+          <div
+            className="p-3 sm:p-4 font-mono text-xs sm:text-sm h-[196px]"
+            style={{ transition: 'opacity 0.4s ease', opacity: dimmed ? 0 : 1 }}
+          >
+            {/* Committed lines render without any transition class — no flicker */}
+            {committed.map((line) => (
+              <div key={line.id}>
+                {line.isPrompt ? (
                   <>
                     <span className="text-primary">$ </span>
-                    <span className="text-foreground">
-                      {index === currentLine && isTyping
-                        ? displayedText
-                        : index < currentLine
-                          ? line.text
-                          : ''}
-                    </span>
-                    {index === currentLine && isTyping && (
-                      <span
-                        className="inline-block h-4 w-2 bg-primary ml-0.5"
-                        style={{ animation: 'cursor-blink 0.5s step-end infinite' }}
-                      />
-                    )}
+                    <span className="text-foreground">{line.text}</span>
                   </>
                 ) : (
-                  index <= currentLine && <span className="text-muted-foreground">{line.text}</span>
+                  <span className="text-muted-foreground">{line.text}</span>
                 )}
               </div>
             ))}
-            {/* Blinking cursor when not typing */}
-            {!isTyping && (
-              <div className="mt-1">
-                <span className="text-primary">$ </span>
+
+            {/* Current typing line — only this element updates during typing */}
+            <div>
+              <span className="text-primary">$ </span>
+              <span className="text-foreground">{typing}</span>
+              {(showCursor || (!showCursor && !dimmed)) && (
                 <span
-                  className="inline-block h-4 w-2 bg-primary"
-                  style={{ animation: 'cursor-blink 1s step-end infinite' }}
+                  className="inline-block h-[1em] w-[0.45em] bg-primary align-middle ml-px"
+                  style={{
+                    animation: `cursor-blink ${showCursor ? '0.5s' : '1s'} step-end infinite`,
+                  }}
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
