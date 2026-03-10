@@ -34,6 +34,10 @@ import {
   Sun,
   Moon,
   KeyRound,
+  FlaskConical,
+  CreditCard,
+  Sparkles,
+  Building2,
 } from 'lucide-react';
 import { DASHBOARD_URL } from '@/lib/constants';
 
@@ -231,6 +235,14 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    title: 'Evals',
+    items: [
+      { label: 'Overview', id: 'evals' },
+      { label: 'Assertions', id: 'evals-assertions' },
+      { label: 'CI/CD Integration', id: 'evals-cicd' },
+    ],
+  },
+  {
     title: 'Guides',
     items: [
       { label: 'Manual Recording', id: 'guide-manual' },
@@ -242,6 +254,7 @@ const NAV_SECTIONS = [
   {
     title: 'Reference',
     items: [
+      { label: 'Pricing', id: 'pricing' },
       { label: 'Types', id: 'types' },
       { label: 'Supported Models', id: 'models' },
       { label: 'Design Principles', id: 'principles' },
@@ -1344,6 +1357,254 @@ tm tail exec_def456`}</CodeBlock>
             </div>
           </section>
 
+          {/* ─── Evals Overview ────────────────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="evals" />
+            <h2 className="mb-2 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <FlaskConical className="h-6 w-6 text-primary" />
+              Eval Platform
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              Ship agent changes with confidence. Time Machine&apos;s eval platform lets you define test suites of real production inputs, assert on outputs, and gate deployments on passing scores — all backed by the same fork &amp; replay infrastructure that powers the dashboard.
+            </p>
+            <p className="mb-8 text-sm text-muted-foreground leading-relaxed">
+              Every eval run is a replay: your test case inputs are forked through your live agent, results are scored by assertion, and a 0–1 score rolls up per suite. Wire it into CI/CD and every PR gets an automated quality gate.
+            </p>
+
+            <h3 className="mb-5 font-mono text-lg font-semibold text-foreground">Key concepts</h3>
+            <div className="mb-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { name: 'Eval Suite', desc: 'A named collection of test cases — e.g. "Customer Support Quality" or "Reasoning Accuracy".' },
+                { name: 'Test Case', desc: 'One input (and optional expected output) your agent will be replayed against.' },
+                { name: 'Eval Run', desc: 'One execution of a full suite — forks each case, runs assertions, returns a 0–1 score.' },
+                { name: 'Assertion', desc: 'A pass/fail check on the agent\'s output: contains, regex, llm_judge, cost_under, and more.' },
+                { name: 'Score', desc: 'Aggregate 0.0–1.0 across all assertions in a run. Set a minimum threshold in CI.' },
+                { name: 'LLM Judge', desc: 'Ask a language model to grade output quality against a rubric — subjective tests made quantifiable.' },
+              ].map((c) => (
+                <div key={c.name} className="rounded-lg border border-border/40 bg-card/50 p-4">
+                  <p className="mb-1 font-mono text-xs font-semibold text-primary">{c.name}</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">{c.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">Create a suite</h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Create via the dashboard (<code className="rounded bg-card px-1 py-0.5 font-mono text-xs">Evals → New Suite</code>) or the API:
+            </p>
+            <CodeBlock title="eval-suite.ts">{`import { TimeMachine } from '@timemachine-sdk/sdk';
+
+const tm = new TimeMachine({ apiKey: process.env.TIMEMACHINE_API_KEY! });
+
+const suite = await tm.createEvalSuite({
+  name: 'Customer Support Quality',
+  description: 'Verify response accuracy, tone, and latency',
+  agentEndpoint: 'https://your-api.com/agent',
+  tags: ['production', 'support'],
+});
+
+// Add test cases
+await tm.addEvalCase(suite.id, {
+  input: { message: 'How do I reset my password?' },
+  expectedOutput: { contains: 'reset link' },
+  tags: ['auth'],
+});
+
+await tm.addEvalCase(suite.id, {
+  input: { message: 'Cancel my subscription' },
+  tags: ['billing'],
+});`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">Save cases from production</h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              The fastest way to build a test suite: save real executions directly from the dashboard. Click any execution → <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">Save as eval case</code>. The input is captured and linked to the suite of your choice.
+            </p>
+
+            <h3 className="mb-4 mt-8 font-mono text-lg font-semibold text-foreground">Run a suite</h3>
+            <p className="mb-4 text-sm text-muted-foreground">Three ways to trigger an eval run:</p>
+            <div className="mb-6 space-y-3">
+              {[
+                { label: 'Dashboard', desc: 'Navigate to Evals → your suite → Run Now. Results appear live as cases complete.' },
+                { label: 'API', desc: 'POST /api/v1/eval/suites/:id/runs — returns a run ID you can poll for status.' },
+                { label: 'CLI', desc: 'tm eval run <suiteId> --wait --threshold 0.9 — blocks until done, exits non-zero on failure.' },
+              ].map((m) => (
+                <div key={m.label} className="flex items-start gap-4 rounded-lg border border-border/40 bg-card/50 px-4 py-3">
+                  <span className="mt-0.5 rounded bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">{m.label}</span>
+                  <span className="text-sm text-muted-foreground">{m.desc}</span>
+                </div>
+              ))}
+            </div>
+            <CodeBlock title="terminal">{`# Run a suite and wait for results
+tm eval run suite_abc123 --wait
+
+# Run with a minimum pass threshold (CI use-case)
+tm eval run suite_abc123 --wait --threshold 0.9
+
+# Check status of a previous run
+tm eval status run_def456
+
+# List recent runs
+tm eval list suite_abc123`}</CodeBlock>
+          </section>
+
+          {/* ─── Evals: Assertions ─────────────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="evals-assertions" />
+            <h2 className="mb-2 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <CheckCircle2 className="h-6 w-6 text-primary" />
+              Assertions
+            </h2>
+            <p className="mb-8 text-sm text-muted-foreground leading-relaxed">
+              Assertions are the scoring rules for each test case. A case passes if all its assertions pass; partial passes score proportionally. Assertions are defined per case and evaluated after each eval run.
+            </p>
+
+            <ApiTable
+              headers={['Type', 'Description', 'Config']}
+              rows={[
+                ['contains', 'Output string includes a substring (case-insensitive)', '{ value: "reset link" }'],
+                ['not_contains', 'Output does not include a substring', '{ value: "error" }'],
+                ['regex', 'Output matches a regular expression', '{ pattern: "order #\\\\d+" }'],
+                ['llm_judge', 'LLM grades output against a rubric (0–1 score)', '{ rubric: "Is the response helpful and accurate?", threshold: 0.8 }'],
+                ['json_valid', 'Output is valid JSON', '{}'],
+                ['json_path', 'A JSON path equals an expected value', '{ path: "$.status", value: "success" }'],
+                ['cost_under', 'Total execution cost is below threshold ($USD)', '{ maxCost: 0.05 }'],
+                ['latency_under', 'Total execution latency is below threshold (ms)', '{ maxLatencyMs: 3000 }'],
+                ['step_count', 'Execution has exactly N steps', '{ count: 5 }'],
+                ['custom', 'Custom JS function evaluated server-side', '{ fn: "(output) => output.length > 10" }'],
+              ]}
+            />
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">Assertion example</h3>
+            <CodeBlock title="assertions.ts">{`await tm.addEvalCase(suite.id, {
+  input: { query: 'Summarise this article in 3 bullet points.' },
+  assertions: [
+    // Output must contain bullet points
+    { type: 'contains', value: '•' },
+    // Graded by LLM on conciseness + accuracy
+    {
+      type: 'llm_judge',
+      rubric: 'Does the response contain exactly 3 concise bullet points that accurately summarise the article?',
+      threshold: 0.8,
+    },
+    // Must complete within 5s and under $0.02
+    { type: 'latency_under', maxLatencyMs: 5000 },
+    { type: 'cost_under', maxCost: 0.02 },
+  ],
+});`}</CodeBlock>
+
+            <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                <span>
+                  <strong className="text-foreground">LLM Judge:</strong> Use sparingly in CI — each judge call adds LLM cost per run. A good pattern is to combine cheap structural assertions (<code className="rounded bg-card px-1 py-0.5 font-mono text-xs">contains</code>, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">regex</code>) as fast gates and reserve <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">llm_judge</code> for nightly or pre-release runs.
+                </span>
+              </p>
+            </div>
+          </section>
+
+          {/* ─── Evals: CI/CD ──────────────────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="evals-cicd" />
+            <h2 className="mb-2 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <GitBranch className="h-6 w-6 text-primary" />
+              CI/CD Integration
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              Block merges on eval regressions. Add the eval run as a required status check and every PR automatically gates on your quality threshold.
+            </p>
+            <p className="mb-8 text-sm text-muted-foreground leading-relaxed">
+              The flow: PR opened → GitHub Actions workflow runs → CLI triggers your suite via the API → polls for completion → exits non-zero if score is below threshold → PR blocked until green.
+            </p>
+
+            <h3 className="mb-4 font-mono text-lg font-semibold text-foreground">GitHub Actions setup</h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              1. Add <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">TIMEMACHINE_API_KEY</code> to your repo Secrets.<br />
+              2. Add <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">EVAL_SUITE_ID</code> to your repo Variables.<br />
+              3. Add this workflow:
+            </p>
+            <CodeBlock title=".github/workflows/evals.yml" language="yaml">{`name: Eval Suite
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  evals:
+    name: Run eval suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run eval suite (threshold 0.9)
+        env:
+          TIMEMACHINE_API_KEY: \${{ secrets.TIMEMACHINE_API_KEY }}
+        run: |
+          npx @timemachine-sdk/cli eval run \${{ vars.EVAL_SUITE_ID }} \\
+            --wait \\
+            --threshold 0.9
+
+      # Optional: post score as PR comment
+      - name: Post eval score
+        if: always()
+        env:
+          TIMEMACHINE_API_KEY: \${{ secrets.TIMEMACHINE_API_KEY }}
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          SCORE=$(npx @timemachine-sdk/cli eval status --latest --format score)
+          gh pr comment \${{ github.event.pull_request.number }} \\
+            --body "**Eval score:** \${SCORE} / 1.0"`}</CodeBlock>
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">Recommended thresholds</h3>
+            <ApiTable
+              headers={['Environment', 'Threshold', 'Rationale']}
+              rows={[
+                ['Safety-critical (healthcare, finance)', '1.0', 'No regressions tolerated'],
+                ['Production', '0.9', 'Up to 10% failure rate acceptable'],
+                ['Staging / pre-release', '0.8', 'Catch regressions early without blocking velocity'],
+                ['Experimental / nightly', '0.7', 'Track trends; don\'t block iteration'],
+              ]}
+            />
+
+            <h3 className="mb-4 mt-10 font-mono text-lg font-semibold text-foreground">Webhook-triggered runs</h3>
+            <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
+              Trigger runs without installing the CLI — useful for serverless environments or non-GitHub CI:
+            </p>
+            <CodeBlock title="trigger.sh" language="bash">{`# Trigger a run via API
+RUN=$(curl -s -X POST \\
+  -H "Authorization: Bearer $TIMEMACHINE_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  https://app.timemachinesdk.dev/api/v1/eval/suites/$SUITE_ID/runs)
+
+RUN_ID=$(echo $RUN | jq -r '.id')
+
+# Poll until terminal
+while true; do
+  STATUS=$(curl -s \\
+    -H "Authorization: Bearer $TIMEMACHINE_API_KEY" \\
+    https://app.timemachinesdk.dev/api/v1/eval/runs/$RUN_ID/status)
+
+  STATE=$(echo $STATUS | jq -r '.status')
+  SCORE=$(echo $STATUS | jq -r '.score')
+
+  [ "$STATE" = "completed" ] && break
+  [ "$STATE" = "failed" ] && exit 1
+  sleep 5
+done
+
+# Fail if below threshold
+awk "BEGIN { exit ($SCORE < 0.9) }" || exit 1`}</CodeBlock>
+
+            <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Activity className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                <span>
+                  <strong className="text-foreground">Pro tip:</strong> Tag your suites by severity — <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">critical</code>, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">regression</code>, <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">nightly</code>. Run only <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">critical</code> tagged suites on every PR (fast, cheap), <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">regression</code> on merge, and full <code className="rounded bg-card px-1 py-0.5 font-mono text-xs">nightly</code> on a schedule.
+                </span>
+              </p>
+            </div>
+          </section>
+
           {/* ─── LangChain Adapter ─────────────────────────── */}
           <section className="mb-20">
             <SectionAnchor id="langchain" />
@@ -2005,6 +2266,129 @@ interface FallbackPricingConfig {
                   <p className="text-sm leading-relaxed text-muted-foreground">{p.desc}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* ─── Pricing ───────────────────────────────────── */}
+          <section className="mb-20">
+            <SectionAnchor id="pricing" />
+            <h2 className="mb-2 flex items-center gap-3 font-mono text-2xl font-bold text-foreground">
+              <CreditCard className="h-6 w-6 text-primary" />
+              Pricing
+            </h2>
+            <p className="mb-10 text-sm text-muted-foreground leading-relaxed">
+              Core observability (executions, steps, fork &amp; replay) is free for all plans. Eval runs are the primary usage metric — they consume compute to replay your agent against each test case.
+            </p>
+
+            <div className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Free */}
+              <div className="flex flex-col rounded-xl border border-border/40 bg-card/50 p-6">
+                <p className="mb-1 font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">Free</p>
+                <div className="mb-4 flex items-end gap-1">
+                  <span className="font-mono text-4xl font-bold text-foreground">$0</span>
+                  <span className="mb-1 text-sm text-muted-foreground">/mo</span>
+                </div>
+                <ul className="mb-6 flex-1 space-y-2.5 text-sm text-muted-foreground">
+                  {['100 eval runs / month', '1 eval suite', '10 test cases', 'Manual runs only', 'Dashboard access', 'Community support'].map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href={DASHBOARD_URL} className="block rounded-lg border border-border/60 py-2.5 text-center font-mono text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                  Get started free
+                </a>
+              </div>
+
+              {/* Pro */}
+              <div className="flex flex-col rounded-xl border border-primary/50 bg-primary/5 p-6 ring-1 ring-primary/20">
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="font-mono text-xs font-semibold uppercase tracking-widest text-primary">Pro</p>
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 font-mono text-xs text-primary">Popular</span>
+                </div>
+                <div className="mb-4 flex items-end gap-1">
+                  <span className="font-mono text-4xl font-bold text-foreground">$49</span>
+                  <span className="mb-1 text-sm text-muted-foreground">/mo</span>
+                </div>
+                <ul className="mb-6 flex-1 space-y-2.5 text-sm text-muted-foreground">
+                  {['2,000 eval runs / month', 'Unlimited suites', 'Unlimited test cases', 'CI/CD integration', 'LLM-as-judge assertions', 'API + CLI access', 'Email support'].map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href={DASHBOARD_URL} className="block rounded-lg bg-primary py-2.5 text-center font-mono text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90">
+                  Start Pro trial
+                </a>
+              </div>
+
+              {/* Team */}
+              <div className="flex flex-col rounded-xl border border-border/40 bg-card/50 p-6">
+                <p className="mb-1 font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">Team</p>
+                <div className="mb-4 flex items-end gap-1">
+                  <span className="font-mono text-4xl font-bold text-foreground">$199</span>
+                  <span className="mb-1 text-sm text-muted-foreground">/mo</span>
+                </div>
+                <ul className="mb-6 flex-1 space-y-2.5 text-sm text-muted-foreground">
+                  {['10,000 eval runs / month', 'Unlimited suites & cases', '5 seats included', 'Scheduled eval runs', 'Slack / webhook alerts', 'Priority support', 'Usage dashboard'].map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href={DASHBOARD_URL} className="block rounded-lg border border-border/60 py-2.5 text-center font-mono text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                  Start Team trial
+                </a>
+              </div>
+
+              {/* Enterprise */}
+              <div className="flex flex-col rounded-xl border border-border/40 bg-card/30 p-6">
+                <div className="mb-1 flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">Enterprise</p>
+                </div>
+                <div className="mb-4 flex items-end gap-1">
+                  <span className="font-mono text-4xl font-bold text-foreground">Custom</span>
+                </div>
+                <ul className="mb-6 flex-1 space-y-2.5 text-sm text-muted-foreground">
+                  {['Unlimited eval runs', 'Unlimited seats', 'SSO / SAML', 'Audit logs', 'SLA guarantee', 'Dedicated support', 'Custom integrations'].map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="mailto:founders@timemachinesdk.com" className="block rounded-lg border border-border/60 py-2.5 text-center font-mono text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                  Contact us
+                </a>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/40 bg-card/50 p-5">
+              <p className="mb-3 font-mono text-sm font-semibold text-foreground">Usage-based add-ons</p>
+              <div className="grid gap-3 sm:grid-cols-3 text-sm text-muted-foreground">
+                <div>
+                  <p className="mb-0.5 font-mono text-xs text-primary">Extra eval runs</p>
+                  <p>$0.01 per run above plan limit</p>
+                </div>
+                <div>
+                  <p className="mb-0.5 font-mono text-xs text-primary">LLM judge tokens</p>
+                  <p>Cost + 20% margin (passed through at near-cost)</p>
+                </div>
+                <div>
+                  <p className="mb-0.5 font-mono text-xs text-primary">Extra seats (Team)</p>
+                  <p>$29 / seat / month</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-border/40 bg-card/30 p-4">
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">All plans include:</strong> Unlimited executions captured, unlimited steps, fork &amp; replay, dashboard access, SDK &amp; API access, Claude Code integration, MCP server, and CLI. Eval runs are the only metered resource.
+              </p>
             </div>
           </section>
 
